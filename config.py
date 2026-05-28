@@ -9,7 +9,7 @@ else:
 
 # locations
 EMOTION_SPLIT_PATH = WORKING_DIR + 'data/processed/emotion_{}.csv'  # expects 'train', 'val', 'test' in {}
-MODEL_SAVE_PATH = WORKING_DIR + 'models/emotion_classifier/best_model.pt'
+MODEL_SAVE_PATH = WORKING_DIR + 'models/emotion_classifier/emotion_classifier_best_model.pt'
 
 
 
