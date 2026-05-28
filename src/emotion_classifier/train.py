@@ -1,9 +1,11 @@
 # src/emotion_classifier/train.py
 
+import os
 import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from tqdm import tqdm
 import wandb
 from config import BASELINE_RUN_CONFIG, WANDB_PROJECT, MODEL_SAVE_PATH
 
@@ -14,7 +16,10 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
     model.train()
     total_loss, total_correct, total_samples = 0, 0, 0
 
-    for batch in loader:
+    # Wrap dataloader with tqdm progress bar
+    progress_bar = tqdm(loader, desc="   Training", leave=False)
+    
+    for batch in progress_bar:
         input_ids      = batch['input_ids'].to(device)
         attention_mask = batch['attention_mask'].to(device)
         labels         = batch['label'].to(device)
@@ -31,6 +36,9 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
         total_correct += (preds == labels).sum().item()
         total_loss    += loss.item() * len(labels)
         total_samples += len(labels)
+        
+        # Dynamically update batch stats on the bar
+        progress_bar.set_postfix(loss=f"{loss.item():.4f}")
 
     return total_loss / total_samples, total_correct / total_samples
 
@@ -41,8 +49,11 @@ def evaluate_one_epoch(model, loader, criterion, device):
     model.eval()
     total_loss, total_correct, total_samples = 0, 0, 0
 
+    # Wrap dataloader with tqdm progress bar
+    progress_bar = tqdm(loader, desc="   Validating", leave=False)
+    
     with torch.no_grad():
-        for batch in loader:
+        for batch in progress_bar:
             input_ids      = batch['input_ids'].to(device)
             attention_mask = batch['attention_mask'].to(device)
             labels         = batch['label'].to(device)
@@ -83,7 +94,9 @@ def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFI
 
     criterion  = nn.CrossEntropyLoss()
     optimizer  = Adam(model.parameters(), lr=run_config["learning_rate"])
-    scheduler  = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
+    
+    # Removed deprecated 'verbose=True' argument
+    scheduler  = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5)
 
     best_val_acc   = 0.0
     patience       = 3
@@ -116,6 +129,9 @@ def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFI
         if val_acc > best_val_acc:
             best_val_acc = val_acc
 
+            # Create destination folder dynamically if missing on Kaggle
+            os.makedirs(os.path.dirname(MODEL_SAVE_PATH), exist_ok=True)
+
             # Save locally
             torch.save({
                 'epoch'      : epoch,
@@ -129,7 +145,7 @@ def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFI
             wandb.run.summary['best_val_acc'] = best_val_acc
             wandb.run.summary['best_epoch']   = epoch
 
-            print(f"  ✅ Best model saved (val_acc: {best_val_acc:.4f})")
+            print(f"   ✅ Best model saved (val_acc: {best_val_acc:.4f})")
             patience_count = 0
         else:
             patience_count += 1
