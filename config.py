@@ -1,6 +1,15 @@
+import os
+
+IS_KAGGLE = "KAGGLE_KERNEL_RUN_TYPE" in os.environ or os.path.exists("/kaggle/input")
+
+if IS_KAGGLE:
+    WORKING_DIR = "/kaggle/working/project/"
+else:
+    WORKING_DIR = ""
+
 # locations
-EMOTION_SPLIT_PATH = 'data/processed/emotion_{}.csv'  # expects 'train', 'val', 'test' in {}
-MODEL_SAVE_PATH = 'models/emotion_classifier/best_model.pt'
+EMOTION_SPLIT_PATH = WORKING_DIR + 'data/processed/emotion_{}.csv'  # expects 'train', 'val', 'test' in {}
+MODEL_SAVE_PATH = WORKING_DIR + 'models/emotion_classifier/best_model.pt'
 
 
 
@@ -8,7 +17,7 @@ MODEL_SAVE_PATH = 'models/emotion_classifier/best_model.pt'
 
 MAX_LEN        = 50
 BATCH_SIZE     = 64
-TOKENIZER_PATH = 'models/emotion_classifier/tokenizer.pkl'
+TOKENIZER_PATH = WORKING_DIR + 'models/emotion_classifier/tokenizer.pkl'
 
 
 
