@@ -2,65 +2,67 @@
 
 import torch
 import torch.nn as nn
-from config import VOCAB_SIZE, EMBED_DIM, LSTM_UNITS, DROPOUT, NUM_CLASSES
 
 
 class EmotionClassifier(nn.Module):
 
-    def __init__(self):
+    def __init__(self, config):
         super(EmotionClassifier, self).__init__()
 
-        # 1. Embedding — converts token IDs into dense vectors
+        embed_dim      = config["embed_dim"]
+        lstm_units     = config["lstm_units"]
+        num_layers     = config["num_layers"]
+        dropout        = config["dropout"]
+        fc_hidden_dim  = config["fc_hidden_dim"]
+        num_classes    = config["num_classes"]
+        vocab_size     = config["vocab_size"]
+
+        # 1. Embedding
         self.embedding = nn.Embedding(
-            num_embeddings = VOCAB_SIZE,
-            embedding_dim  = EMBED_DIM,
-            padding_idx    = 0          # tells model to ignore padding tokens
+            num_embeddings = vocab_size,
+            embedding_dim  = embed_dim,
+            padding_idx    = 0
         )
 
-        # 2. Dropout on embedding output
         self.embed_dropout = nn.Dropout(0.2)
 
-        # 3. Bidirectional LSTM
+        # 2. Bidirectional LSTM
         self.lstm = nn.LSTM(
-            input_size    = EMBED_DIM,
-            hidden_size   = LSTM_UNITS,
-            num_layers    = 2,           # stack two LSTM layers for more depth
-            batch_first   = True,        # input shape: (batch, seq_len, features)
+            input_size    = embed_dim,
+            hidden_size   = lstm_units,
+            num_layers    = num_layers,
+            batch_first   = True,
             bidirectional = True,
-            dropout       = 0.3          # dropout between the two LSTM layers
+            dropout       = dropout if num_layers > 1 else 0.0
+            # dropout between layers only makes sense if num_layers > 1
         )
 
-        # 4. Fully connected classification head
-        # LSTM_UNITS * 2 because bidirectional concatenates forward + backward
+        # 3. Fully connected head
+        # lstm_units * 2 because bidirectional
         self.fc = nn.Sequential(
-            nn.Linear(LSTM_UNITS * 2, 64),
+            nn.Linear(lstm_units * 2, fc_hidden_dim),
             nn.ReLU(),
-            nn.Dropout(DROPOUT),
-            nn.Linear(64, NUM_CLASSES)
+            nn.Dropout(dropout),
+            nn.Linear(fc_hidden_dim, num_classes)
         )
 
     def forward(self, input_ids, attention_mask):
-        # input_ids:      (batch_size, max_len)
-        # attention_mask: (batch_size, max_len) — 1 for real tokens, 0 for padding
-
-        # Step 1 — embed
+        # 1. Embed
         x = self.embedding(input_ids)       # (batch, max_len, embed_dim)
         x = self.embed_dropout(x)
 
-        # Step 2 — mask padding before passing to LSTM
+        # 2. Pack → BiLSTM → Unpack
         lengths = attention_mask.sum(dim=1).cpu()
         x = nn.utils.rnn.pack_padded_sequence(
             x, lengths, batch_first=True, enforce_sorted=False
         )
+        x, _ = self.lstm(x)
+        x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
+        # (batch, max_len, lstm_units * 2)
 
-        # Step 3 — BiLSTM
-        packed_out, _ = self.lstm(x)
-        x, _ = nn.utils.rnn.pad_packed_sequence(packed_out, batch_first=True)
-        # x shape: (batch, max_len, LSTM_UNITS * 2)
+        # 3. GlobalMaxPool
+        x = x.max(dim=1).values             # (batch, lstm_units * 2)
 
-        # Step 4 — GlobalMaxPool (take strongest signal across time steps)
-        x = x.max(dim=1).values             # (batch, LSTM_UNITS * 2)
-
-        # Step 5 — classify
-        out = self.fc(x)                    # (batch, NUM_CLASSES)
+        # 4. Classify
+        out = self.fc(x)                    # (batch, num_classes)
         return out

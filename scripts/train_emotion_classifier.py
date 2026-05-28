@@ -1,36 +1,63 @@
 # scripts/train_emotion_classifier.py
 
+import argparse
 import torch
 import wandb
 from kaggle_secrets import UserSecretsClient
 
-from src.emotion_classifier.model import EmotionClassifier
-from src.emotion_classifier.tokenizer import load_tokenizer, save_tokenizer, get_dataloaders
-from src.emotion_classifier.train import train
-from src.dataset import load_data
-from config import MODEL_SAVE_PATH
+from src.emotion_classifier import (
+    load_data,
+    load_tokenizer,
+    save_tokenizer,
+    get_dataloaders,
+    EmotionClassifier,
+    train
+)
+from config import BASELINE_RUN_CONFIG, RUN2_CONFIG, RUN3_CONFIG, RUN4_CONFIG
+
+# ── 0. Argument Parsing ───────────────────────────────────────────────────────
+
+RUN_MAP = {
+    "baseline" : BASELINE_RUN_CONFIG,
+    "run2"     : RUN2_CONFIG,
+    "run3"     : RUN3_CONFIG,
+    "run4"     : RUN4_CONFIG,
+}
+
+parser = argparse.ArgumentParser(description="Train Emotion Classifier")
+parser.add_argument(
+    "--run",
+    type    = str,
+    choices = list(RUN_MAP.keys()),   # only accept valid run names
+    default = "baseline",
+    help    = "Which run config to use"
+)
+args = parser.parse_args()
+
+run_config = RUN_MAP[args.run]
+print(f"[CONFIG] Using run: '{args.run}'")
+print(f"[CONFIG] Settings: {run_config}")
 
 
-# ── 0. Device ─────────────────────────────────────────────────────────────────
+# ── 1. Device ─────────────────────────────────────────────────────────────────
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"[DEVICE] Using: {device}")
+print(f"\n[DEVICE] Using: {device}")
 
 
-# ── 1. Wandb Login ────────────────────────────────────────────────────────────
+# ── 2. Wandb Login ────────────────────────────────────────────────────────────
 print("\n[WANDB] Logging in...")
 wandb.login(key=UserSecretsClient().get_secret("WANDB_API_KEY"))
 print("[WANDB] Login successful")
 
 
-# ── 2. Load Data ──────────────────────────────────────────────────────────────
+# ── 3. Load Data ──────────────────────────────────────────────────────────────
 print("\n[DATA] Loading dataset...")
 train_df, val_df, test_df = load_data()
 print(f"[DATA] Train: {len(train_df)} | Val: {len(val_df)} | Test: {len(test_df)}")
-print(f"[DATA] Columns: {train_df.columns.tolist()}")
 print(f"[DATA] Sample:\n{train_df.head(2)}")
 
 
-# ── 3. Tokenizer ──────────────────────────────────────────────────────────────
+# ── 4. Tokenizer ──────────────────────────────────────────────────────────────
 print("\n[TOKENIZER] Loading pretrained BERT tokenizer...")
 tokenizer = load_tokenizer()
 print("[TOKENIZER] Loaded successfully")
@@ -40,14 +67,13 @@ save_tokenizer(tokenizer)
 print("[TOKENIZER] Saved successfully")
 
 
-# ── 4. DataLoaders ────────────────────────────────────────────────────────────
+# ── 5. DataLoaders ────────────────────────────────────────────────────────────
 print("\n[DATALOADER] Creating dataloaders...")
-train_loader, val_loader, test_loader = get_dataloaders(train_df, val_df, test_df, tokenizer)
+train_loader, val_loader, test_loader = get_dataloaders(train_df, val_df, test_df, tokenizer, run_config)
 print(f"[DATALOADER] Train batches: {len(train_loader)}")
 print(f"[DATALOADER] Val batches:   {len(val_loader)}")
 print(f"[DATALOADER] Test batches:  {len(test_loader)}")
 
-# Inspect one batch to verify shapes
 print("\n[DATALOADER] Inspecting one batch...")
 sample_batch = next(iter(train_loader))
 print(f"[DATALOADER] input_ids shape:      {sample_batch['input_ids'].shape}")
@@ -56,32 +82,30 @@ print(f"[DATALOADER] labels shape:         {sample_batch['label'].shape}")
 print(f"[DATALOADER] Sample labels:        {sample_batch['label'][:8]}")
 
 
-# ── 5. Model ──────────────────────────────────────────────────────────────────
+# ── 6. Model ──────────────────────────────────────────────────────────────────
 print("\n[MODEL] Building EmotionClassifier...")
-model = EmotionClassifier().to(device)
-print(f"[MODEL] Architecture:\n{model}")
+model = EmotionClassifier(run_config).to(device)
 total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print(f"[MODEL] Trainable parameters: {total_params:,}")
 
 
-# ── 6. Sanity Check — one forward pass before full training ───────────────────
+# ── 7. Sanity Check ───────────────────────────────────────────────────────────
 print("\n[SANITY CHECK] Running one forward pass...")
 model.eval()
 with torch.no_grad():
     test_ids  = sample_batch['input_ids'][:2].to(device)
     test_mask = sample_batch['attention_mask'][:2].to(device)
     test_out  = model(test_ids, test_mask)
-    print(f"[SANITY CHECK] Output shape: {test_out.shape}")   # should be (2, 6)
-    print(f"[SANITY CHECK] Output:       {test_out}")
+    print(f"[SANITY CHECK] Output shape: {test_out.shape}")  # should be (2, 6)
 print("[SANITY CHECK] Forward pass OK ✅")
 
 
-# ── 7. Train ──────────────────────────────────────────────────────────────────
+# ── 8. Train ──────────────────────────────────────────────────────────────────
 print("\n[TRAIN] Starting training loop...")
-train(model, train_loader, val_loader, device)
+train(model, train_loader, val_loader, device, run_config)
 print("[TRAIN] Training complete ✅")
 
 
-# ── 8. Done ───────────────────────────────────────────────────────────────────
-print(f"\n[DONE] Best model saved to: {MODEL_SAVE_PATH}")
+# ── 9. Done ───────────────────────────────────────────────────────────────────
+print(f"\n[DONE] Best model saved to: {run_config['name']}")
 print("[DONE] Check your wandb dashboard for training curves")

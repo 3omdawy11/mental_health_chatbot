@@ -5,11 +5,7 @@ import torch.nn as nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import wandb
-from config import (
-    EPOCHS, LEARNING_RATE, MODEL_SAVE_PATH,
-    WANDB_PROJECT, WANDB_RUN_NAME,
-    EMBED_DIM, LSTM_UNITS, DROPOUT, BATCH_SIZE
-)
+from config import BASELINE_RUN_CONFIG, WANDB_PROJECT, MODEL_SAVE_PATH
 
 
 # ── 1. One Training Epoch ─────────────────────────────────────────────────────
@@ -64,19 +60,19 @@ def evaluate_one_epoch(model, loader, criterion, device):
 
 # ── 3. Full Training Loop ─────────────────────────────────────────────────────
 
-def train(model, train_loader, val_loader, device):
+def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFIG):
 
     # --- Init wandb run ---
     wandb.init(
         project = WANDB_PROJECT,
-        name    = WANDB_RUN_NAME,
+        name    = run_config["name"],
         config  = {
-            "epochs"        : EPOCHS,
-            "learning_rate" : LEARNING_RATE,
-            "batch_size"    : BATCH_SIZE,
-            "embed_dim"     : EMBED_DIM,
-            "lstm_units"    : LSTM_UNITS,
-            "dropout"       : DROPOUT,
+            "epochs"        : run_config["epochs"],
+            "learning_rate" : run_config["learning_rate"],
+            "batch_size"    : run_config["batch_size"],
+            "embed_dim"     : run_config["embed_dim"],
+            "lstm_units"    : run_config["lstm_units"],
+            "dropout"       : run_config["dropout"],
             "optimizer"     : "Adam",
             "scheduler"     : "ReduceLROnPlateau",
         }
@@ -86,7 +82,7 @@ def train(model, train_loader, val_loader, device):
     wandb.watch(model, log='all', log_freq=10)
 
     criterion  = nn.CrossEntropyLoss()
-    optimizer  = Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer  = Adam(model.parameters(), lr=run_config["learning_rate"])
     scheduler  = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5, verbose=True)
 
     best_val_acc   = 0.0
@@ -97,7 +93,7 @@ def train(model, train_loader, val_loader, device):
     print(f"{'Epoch':<8} {'Train Loss':<14} {'Train Acc':<14} {'Val Loss':<14} {'Val Acc':<14}")
     print("-" * 64)
 
-    for epoch in range(1, EPOCHS + 1):
+    for epoch in range(1, run_config["epochs"] + 1):
 
         train_loss, train_acc = train_one_epoch(model, train_loader, optimizer, criterion, device)
         val_loss,   val_acc   = evaluate_one_epoch(model, val_loader, criterion, device)
