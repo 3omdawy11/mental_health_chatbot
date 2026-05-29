@@ -1,7 +1,5 @@
 # scripts/evaluate_emotion_classifier.py
 
-import sys
-sys.path.insert(0, '.')
 
 import torch
 from src.emotion_classifier import load_data, load_tokenizer, get_dataloaders, EmotionClassifier, evaluate

@@ -3,8 +3,10 @@
 import argparse
 import torch
 import wandb
-
+import os
 from config import IS_KAGGLE
+from dotenv import load_dotenv
+load_dotenv()
 
 if IS_KAGGLE:
     from kaggle_secrets import UserSecretsClient
@@ -51,7 +53,7 @@ print(f"\n[DEVICE] Using: {device}")
 
 # ── 2. Wandb Login ────────────────────────────────────────────────────────────
 print("\n[WANDB] Logging in...")
-wandb.login(key=UserSecretsClient().get_secret("WANDB_API_KEY"))
+wandb.login(key=os.getenv("WANDB_API_KEY"))
 print("[WANDB] Login successful")
 
 
