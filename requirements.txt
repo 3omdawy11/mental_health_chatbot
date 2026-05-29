@@ -1,22 +1,30 @@
+# Core API
 fastapi
 uvicorn
 pydantic
 
+# Deep Learning
 torch>=2.0.0
 transformers
 sentence-transformers
+
+# Data Processing
 datasets
+pandas
+numpy
 scikit-learn
 
+# NLP & Text Processing
 docling
 rank_bm25
 spacy
 nltk
-
-# Language Detection
 fasttext-wheel
 
-pandas
-numpy
+# Visualization
+matplotlib
+seaborn
+
+# Utilities
 python-dotenv
 tqdm

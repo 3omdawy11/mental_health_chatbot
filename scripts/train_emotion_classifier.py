@@ -3,7 +3,12 @@
 import argparse
 import torch
 import wandb
-from kaggle_secrets import UserSecretsClient
+
+from config import IS_KAGGLE
+
+if IS_KAGGLE:
+    from kaggle_secrets import UserSecretsClient
+
 
 from src.emotion_classifier import (
     load_data,
