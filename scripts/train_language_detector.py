@@ -90,24 +90,6 @@ def build_vectorizer(train_texts: pd.Series) -> TfidfVectorizer:
     print(f"  Fit time        : {time.time()-t0:.1f}s")
     return vec
 
-
-def compare_vectorizers(train_texts: pd.Series, train_labels: pd.Series) -> None:
-    """Quick note comparing TF-IDF char vs word n-grams (no re-training)."""
-    from sklearn.feature_extraction.text import CountVectorizer
-
-    print("\n  [Note] TF-IDF char_wb vs CountVectorizer word comparison:")
-    print("  ┌──────────────────────────┬──────────────────────────────────────┐")
-    print("  │ TF-IDF char_wb (chosen)  │ Character n-grams capture script/    │")
-    print("  │                          │ morphological patterns independent   │")
-    print("  │                          │ of tokenisation. Robust across all   │")
-    print("  │                          │ 20 scripts (Arabic, CJK, Cyrillic…). │")
-    print("  ├──────────────────────────┼──────────────────────────────────────┤")
-    print("  │ CountVectorizer word     │ Better interpretability for Latin-   │")
-    print("  │                          │ script languages; ignores morphology │")
-    print("  │                          │ & fails on CJK without tokenisation. │")
-    print("  └──────────────────────────┴──────────────────────────────────────┘")
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # 3.  Grid search over C
 # ─────────────────────────────────────────────────────────────────────────────
@@ -299,8 +281,6 @@ def main():
 
     # 2. Vectoriser (fit on train only)
     vec = build_vectorizer(train["text"])
-    compare_vectorizers(train["text"], train["language"])
-
     X_train = vec.transform(train["text"])
     X_val   = vec.transform(val["text"])
     X_test  = vec.transform(test["text"])
@@ -330,7 +310,7 @@ def main():
     print("\n" + "=" * 60)
     print("  Wrapper class smoke test")
     print("=" * 60)
-    from src.modules.language_detector import LanguageDetector
+    from src.language_detector import LanguageDetector
     detector = LanguageDetector()
     test_cases = [
         ("Hello, how are you feeling today?", "en"),
