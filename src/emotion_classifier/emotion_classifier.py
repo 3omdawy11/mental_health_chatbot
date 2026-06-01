@@ -545,10 +545,10 @@ from transformers import BertTokenizer
 from src.emotion_classifier.model import EmotionClassifier as BiLSTMNet
 
 # ── Mappings & Constants ──────────────────────────────────────────────────────
-EMOTION_LABELS = ['anger','fear','joy','love','sadness','surprise']
+EMOTION_LABELS = ['sadness','joy','love','anger','fear','surprise']
 
-
-ID2LABEL = {i: e for i, e in enumerate(EMOTION_LABELS)}
+ID2LABEL = {i: label for i, label in enumerate(EMOTION_LABELS)}
+LABEL2ID = {label: i for i, label in enumerate(EMOTION_LABELS)}
 
 _ROOT = Path(__file__).resolve().parent.parent.parent
 _DEFAULT_MODEL_DIR = _ROOT / "models" / "emotion_classifier"

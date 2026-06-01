@@ -2,38 +2,36 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-# Import your wrappers
 from src.language_detector import LanguageDetector
 from src.emotion_classifier import EmotionClassifier
 from src.intent_classifier import IntentClassifier
+from src.language_translator import Translator
 
-# Import your routes
 from src.api.routes import chat, health
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ── Startup: Load all models into memory once ──
     print("Loading NLP models into memory...")
-    app.state.lang_detector = LanguageDetector()
-    app.state.emotion_classifier = EmotionClassifier()
-    app.state.intent_classifier = IntentClassifier()
-    print("All models successfully loaded!")
-    
+    app.state.lang_detector       = LanguageDetector()
+    app.state.emotion_classifier  = EmotionClassifier()
+    app.state.intent_classifier   = IntentClassifier()
+    app.state.translator          = Translator()
+    print("All models loaded ✓")
+
     yield
-    
-    # ── Shutdown: Clean up resources if needed ──
-    print("Shutting down and clearing model states...")
+
+    print("Shutting down...")
     del app.state.lang_detector
     del app.state.emotion_classifier
     del app.state.intent_classifier
+    del app.state.translator
 
 app = FastAPI(
-    title="Mental Health Chatbot API Component",
+    title="Mental Health Chatbot API",
     version="1.0.0",
     lifespan=lifespan
 )
 
-# Core Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -42,6 +40,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include Routers cleanly
-app.include_router(chat.router, prefix="/v1", tags=["Chat"])
+app.include_router(chat.router,   prefix="/v1", tags=["Chat"])
 app.include_router(health.router, prefix="/v1", tags=["System Health"])

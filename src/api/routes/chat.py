@@ -2,63 +2,87 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from src.api.schemas import ChatRequest, ChatResponse
 from src.api.dependencies import (
-    get_language_detector, 
-    get_emotion_classifier, 
-    get_intent_classifier
+    get_language_detector,
+    get_emotion_classifier,
+    get_intent_classifier,
+    get_translator,
 )
 
 router = APIRouter()
 
+CRISIS_RESPONSE = (
+    "I'm really sorry you're feeling this way. "
+    "Please reach out to someone who can help right now. "
+    "You can call or text the Suicide & Crisis Lifeline at 988. "
+    "You are not alone."
+)
+
 @router.post("/chat", response_model=ChatResponse)
 async def process_chat_message(
     request: ChatRequest,
-    lang_detector = Depends(get_language_detector),
+    lang_detector      = Depends(get_language_detector),
     emotion_classifier = Depends(get_emotion_classifier),
-    intent_classifier = Depends(get_intent_classifier)
+    intent_classifier  = Depends(get_intent_classifier),
+    translator         = Depends(get_translator),
 ):
     user_text = request.message.strip()
     if not user_text:
-        raise HTTPException(status_code=400, detail="Message content cannot be empty.")
+        raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    # 1. Language Detection (Fast CPU bound)
-    lang_result = lang_detector.detect(user_text)
-    
-    # 2. Parallelizing Emotion and Intent tasks to maximize performance
-    # Running in threads prevents blocking FastAPI's main event loop
+    # ── Step 1: Language detection ─────────────────────────────────────
+    lang_result   = lang_detector.detect(user_text)
+    detected_lang = lang_result.get("language", "en")
+    language_name = lang_result.get("language_name", "English")
+
+    # ── Step 2: Translate to English if needed ─────────────────────────
+    translated = translator.to_english(user_text, detected_lang)
+
+    # ── Step 3: Emotion + Intent in parallel on English text ───────────
     try:
-        emotion_task = asyncio.to_thread(emotion_classifier.predict, user_text)
-        intent_task = asyncio.to_thread(intent_classifier.predict, user_text)
-        
+        emotion_task = asyncio.to_thread(emotion_classifier.predict, translated)
+        intent_task  = asyncio.to_thread(intent_classifier.predict,  translated)
         emotion_result, intent_result = await asyncio.gather(emotion_task, intent_task)
     except Exception as e:
-        # Fail-safe fallbacks if a classifier throws an error
-        emotion_result = {"emotion": "neutral"}
-        intent_result = {"intent": "general", "is_crisis": False}
+        emotion_result = {"emotion": "neutral", "confidence": 0.0, "all_scores": {}}
+        intent_result  = {"intent": "general", "is_crisis": False}
 
-    detected_intent = intent_result.get("intent", "general")
-    is_crisis_event = intent_result.get("is_crisis", False) or detected_intent in ["suicide", "self_harm", "crisis"]
+    emotion            = emotion_result.get("emotion", "neutral")
+    emotion_confidence = emotion_result.get("confidence", 0.0)
+    detected_intent    = intent_result.get("intent", "general")
+    is_crisis          = (
+        intent_result.get("is_crisis", False)
+        or detected_intent in ["suicide", "self_harm", "crisis"]
+    )
 
-    # 3. Crisis Guardrail Interception
-    if is_crisis_event:
+    # ── Step 4: Crisis guardrail ───────────────────────────────────────
+    if is_crisis:
+        crisis_reply = translator.to_lang(CRISIS_RESPONSE, detected_lang)
         return ChatResponse(
             original_message=user_text,
-            detected_lang=lang_result.get("language", "unknown"),
-            emotion=emotion_result.get("emotion", "neutral"),
+            detected_lang=detected_lang,
+            language_name=language_name,
+            translated_message=translated,
+            emotion=emotion,
+            emotion_confidence=emotion_confidence,
             intent=detected_intent,
-            response="I'm really sorry you're feeling this way. Please reach out to someone who can help right now. You can call or text the Suicide & Crisis Lifeline at 988.",
-            is_crisis=True
+            is_crisis=True,
+            response=crisis_reply,
         )
 
-    # 4. RAG Engine Integration Placeholder
-    # Once your RAG module is fully developed, you'll inject it here:
-    # rag_output = await rag_engine.generate(user_text, emotion=emotion_result.get("emotion"))
-    rag_output = f"Mock RAG Response: This is where the mental health context gets injected."
+    # ── Step 5: RAG placeholder ────────────────────────────────────────
+    # When RAG is ready, replace these lines:
+    # rag_output = await rag_engine.generate(translated, emotion=emotion)
+    # response   = translator.to_lang(rag_output, detected_lang)
+    response = "RAG not integrated yet."
 
     return ChatResponse(
         original_message=user_text,
-        detected_lang=lang_result.get("language", "unknown"),
-        emotion=emotion_result.get("emotion", "neutral"),
+        detected_lang=detected_lang,
+        language_name=language_name,
+        translated_message=translated,
+        emotion=emotion,
+        emotion_confidence=emotion_confidence,
         intent=detected_intent,
-        response=rag_output,
-        is_crisis=False
+        is_crisis=False,
+        response=response,
     )

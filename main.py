@@ -93,167 +93,169 @@
 
 
 
-# import os
-# from dotenv import load_dotenv
+import os
+from dotenv import load_dotenv
 
-# # Absolute imports enabled by your editable installation (pip install -e .)
-# from src.intent_classifier.intent_classifier import IntentClassifier
-# from src.language_detector.language_detector import LanguageDetector
-# from src.emotion_classifier.emotion_classifier import EmotionClassifier
-
-# def test_complete_pipeline():
-#     print("====================================================")
-#     print("🚀 Bootstrapping Chatbot Core Model Test Suite")
-#     print("====================================================\n")
-    
-#     load_dotenv()
-#     if not os.getenv("GROQ_API_KEY"):
-#         print("❌ Error: GROQ_API_KEY missing from environment setup.")
-#         return
-
-#     # ──────────────────────────────────────────────────────────────────
-#     # 1. Initialize All Components
-#     # ──────────────────────────────────────────────────────────────────
-#     try:
-#         print("📥 Loading Intent Classifier (Groq)...")
-#         intent_clf = IntentClassifier()
-        
-#         print("📥 Loading Language Detector (TF-IDF + LR)...")
-#         lang_det = LanguageDetector()
-        
-#         print("📥 Loading Emotion Classifier (BiLSTM)...")
-#         emotion_clf = EmotionClassifier()
-        
-#         print("\n✅ All models successfully instantiated and ready!\n")
-#     except Exception as e:
-#         print(f"❌ Initialization failed: {e}")
-#         import traceback
-#         traceback.print_exc()
-#         return
-
-#     # ──────────────────────────────────────────────────────────────────
-#     # 2. Test Cases (Mixed Intent, Language, and Emotions)
-#     # ──────────────────────────────────────────────────────────────────
-#     test_inputs = [
-#         "Hey there! Good morning, how are you?", 
-#         "I have been feeling really anxious and overwhelmed lately, I can't sleep.",
-#         "Me siento completamente solo y desesperado hoy, nadie me entiende.",
-#         "What is the total distance of a marathon race?",
-#         "Thank you so much, this conversation really helped calm me down.",
-#         "I want to end my life, please help me."
-#     ]
-
-#     # ──────────────────────────────────────────────────────────────────
-#     # 3. Execution Sweep
-#     # ──────────────────────────────────────────────────────────────────
-#     print("--- Running Pipeline Evaluation Sweep ---")
-#     for idx, text in enumerate(test_inputs, 1):
-#         print(f"\n📝 Test #{idx}: \"{text}\"")
-#         print("-" * 50)
-        
-#         # 🎯 Step A: Intent Prediction
-#         try:
-#             intent_res = intent_clf.predict(text)
-#             print(f"  🔹 Intent   : {intent_res['intent'].upper()} (Crisis Flag: {intent_res['is_crisis']})")
-#         except Exception as e:
-#             print(f"  ❌ Intent Detection Failed: {e}")
-
-#         # 🌐 Step B: Language Detection
-#         try:
-#             lang_res = lang_det.detect(text)
-#             print(f"  🔹 Language : {lang_res['language']} ({lang_res['language_name']}) | Conf: {lang_res['confidence']:.2f}")
-#         except Exception as e:
-#             print(f"  ❌ Language Detection Failed: {e}")
-
-#         # 🎭 Step C: Emotion Classification (BiLSTM Forward Pass)
-#         try:
-#             emotion_res = emotion_clf.predict(text)
-#             print(f"  🔹 Emotion  : {emotion_res['emotion'].upper()} | Conf: {emotion_res['confidence']:.2f}")
-#             if emotion_res['all_scores']:
-#                 top_3 = list(emotion_res['all_scores'].items())[:3]
-#                 print(f"  └─ Top Scores: {', '.join([f'{k}: {v}' for k, v in top_3])}")
-#         except Exception as e:
-#             print(f"  ❌ Emotion Classification Failed: {e}")
-
-#     print("\n====================================================")
-#     print("✅ Pipeline Evaluation Sweep Complete!")
-#     print("====================================================")
-
-# if __name__ == "__main__":
-#     test_complete_pipeline()
-
-import torch
+# Absolute imports enabled by your editable installation (pip install -e .)
+from src.intent_classifier import IntentClassifier
+from src.language_detector import LanguageDetector
 from src.emotion_classifier import EmotionClassifier
 
-def test_isolated_emotion_classifier():
+def test_complete_pipeline():
     print("====================================================")
-    print("🧠 Isolated Evaluation: BiLSTM Emotion Classifier")
+    print("🚀 Bootstrapping Chatbot Core Model Test Suite")
     print("====================================================\n")
     
+    load_dotenv()
+    if not os.getenv("GROQ_API_KEY"):
+        print("❌ Error: GROQ_API_KEY missing from environment setup.")
+        return
+
     # ──────────────────────────────────────────────────────────────────
-    # 1. Initialize the Classifier
+    # 1. Initialize All Components
     # ──────────────────────────────────────────────────────────────────
     try:
-        print("📥 Initializing and loading your fine-tuned BiLSTM model weights...")
-        # Auto-detects device type (CUDA / CPU) internally
-        clf = EmotionClassifier()
-        print(f"✅ Class instance ready: {clf}")
-    except FileNotFoundError as e:
-        print("\n❌ Path Error: Missing required model artifacts!")
-        print("Verify your folder 'models/emotion_classifier/' contains:")
-        print("  - emotion_classifier_best_model.pt")
-        print("  - emotion_config.yaml")
-        print("  - tokenizer.pkl")
-        print(f"\nDetails: {e}")
-        return
+        print("📥 Loading Intent Classifier (Groq)...")
+        intent_clf = IntentClassifier()
+        
+        print("📥 Loading Language Detector (TF-IDF + LR)...")
+        lang_det = LanguageDetector()
+        
+        print("📥 Loading Emotion Classifier (BiLSTM)...")
+        emotion_clf = EmotionClassifier()
+        
+        print("\n✅ All models successfully instantiated and ready!\n")
     except Exception as e:
-        print(f"❌ Failed during setup initialization: {e}")
+        print(f"❌ Initialization failed: {e}")
         import traceback
         traceback.print_exc()
         return
 
     # ──────────────────────────────────────────────────────────────────
-    # 2. Targeted Test Expressions (Evaluating your 6 emotion labels)
+    # 2. Test Cases (Mixed Intent, Language, and Emotions)
     # ──────────────────────────────────────────────────────────────────
-    test_phrases = [
-        "I feel completely isolated and hopeless today, like nothing will ever get better.", # sadness
-        "Get out of my face! I am absolutely furious at how unfairly I am being treated.", # anger
-        "I am over the moon right now! I just found out I passed my hardest exams!",       # joy
-        "I heard a creepy shattering noise downstairs in the dark and my chest is tight.",# fear
-        "Wow! I completely did not expect to see you walk through that door today!",     # surprise
-        "I appreciate you listening to me so deeply. I feel incredibly safe here."        # love
+    test_inputs = [
+        "Hey there! Good morning, how are you?", 
+        "I have been feeling really anxious and overwhelmed lately, I can't sleep.",
+        "Me siento completamente solo y desesperado hoy, nadie me entiende.",
+        "What is the total distance of a marathon race?",
+        "Thank you so much, this conversation really helped calm me down.",
+        "I want to end my life, please help me."
     ]
 
     # ──────────────────────────────────────────────────────────────────
-    # 3. Running Prediction Sweep
+    # 3. Execution Sweep
     # ──────────────────────────────────────────────────────────────────
-    print("\n--- Starting Text Inference Sweep ---")
-    for idx, text in enumerate(test_phrases, 1):
+    print("--- Running Pipeline Evaluation Sweep ---")
+    for idx, text in enumerate(test_inputs, 1):
         print(f"\n📝 Test #{idx}: \"{text}\"")
-        print("-" * 55)
+        print("-" * 50)
         
+        # 🎯 Step A: Intent Prediction
         try:
-            # Executes the underlying string pre-processing, embedding, sequence packing, and spatial pooling pass
-            result = clf.predict(text)
-            
-            print(f"  🎯 Predicted Emotion : {result['emotion'].upper()}")
-            print(f"  📈 Confidence Score   : {result['confidence']:.4f}")
-            
-            if result['all_scores']:
-                print("  📊 Full Sorted Probability Distribution:")
-                for emotion, score in result['all_scores'].items():
-                    # Format as a clean visual bar representation for easier terminal debugging
-                    bar = "█" * int(score * 20)
-                    print(f"    └─ {emotion:<9}: {score:.4f} {bar}")
-                    
+            intent_res = intent_clf.predict(text)
+            print(f"  🔹 Intent   : {intent_res['intent'].upper()} (Crisis Flag: {intent_res['is_crisis']})")
         except Exception as e:
-            print(f"  ❌ Inference Processing Failed: {e}")
-            import traceback
-            traceback.print_exc()
+            print(f"  ❌ Intent Detection Failed: {e}")
+
+        # 🌐 Step B: Language Detection
+        try:
+            lang_res = lang_det.detect(text)
+            print(f"  🔹 Language : {lang_res['language']} ({lang_res['language_name']}) | Conf: {lang_res['confidence']:.2f}")
+        except Exception as e:
+            print(f"  ❌ Language Detection Failed: {e}")
+
+        # 🎭 Step C: Emotion Classification (BiLSTM Forward Pass)
+        try:
+            emotion_res = emotion_clf.predict(text)
+            print(f"  🔹 Emotion  : {emotion_res['emotion'].upper()} | Conf: {emotion_res['confidence']:.2f}")
+            if emotion_res['all_scores']:
+                top_3 = list(emotion_res['all_scores'].items())[:3]
+                print(f"  └─ Top Scores: {', '.join([f'{k}: {v}' for k, v in top_3])}")
+        except Exception as e:
+            print(f"  ❌ Emotion Classification Failed: {e}")
 
     print("\n====================================================")
-    print("✅ Emotion Classifier Test Evaluation Complete!")
+    print("✅ Pipeline Evaluation Sweep Complete!")
     print("====================================================")
 
 if __name__ == "__main__":
-    test_isolated_emotion_classifier()
+    test_complete_pipeline()
+
+# from src.emotion_classifier import EmotionClassifier
+# from src.utils.preprocessor import clean_text
+
+# def test_isolated_emotion_classifier():
+#     print("====================================================")
+#     print("🧠 Isolated Evaluation: BiLSTM Emotion Classifier")
+#     print("====================================================\n")
+    
+#     # ──────────────────────────────────────────────────────────────────
+#     # 1. Initialize the Classifier
+#     # ──────────────────────────────────────────────────────────────────
+#     try:
+#         print("📥 Initializing and loading your fine-tuned BiLSTM model weights...")
+#         # Auto-detects device type (CUDA / CPU) internally
+#         clf = EmotionClassifier()
+#         print(f"✅ Class instance ready: {clf}")
+#     except FileNotFoundError as e:
+#         print("\n❌ Path Error: Missing required model artifacts!")
+#         print("Verify your folder 'models/emotion_classifier/' contains:")
+#         print("  - emotion_classifier_best_model.pt")
+#         print("  - emotion_config.yaml")
+#         print("  - tokenizer.pkl")
+#         print(f"\nDetails: {e}")
+#         return
+#     except Exception as e:
+#         print(f"❌ Failed during setup initialization: {e}")
+#         import traceback
+#         traceback.print_exc()
+#         return
+
+#     # ──────────────────────────────────────────────────────────────────
+#     # 2. Targeted Test Expressions (Evaluating your 6 emotion labels)
+#     # ──────────────────────────────────────────────────────────────────
+#     test_phrases = [
+#         "I feel completely isolated and hopeless today, like nothing will ever get better.", # sadness
+#         "Get out of my face! I am absolutely furious at how unfairly I am being treated.", # anger
+#         "I am over the moon right now! I just found out I passed my hardest exams!",       # joy
+#         "I heard a creepy shattering noise downstairs in the dark and my chest is tight.",# fear
+#         "Wow! I completely did not expect to see you walk through that door today!",     # surprise
+#         "I appreciate you listening to me so deeply. I feel incredibly safe here."        # love
+#     ]
+
+#     # ──────────────────────────────────────────────────────────────────
+#     # 3. Running Prediction Sweep
+#     # ──────────────────────────────────────────────────────────────────
+#     print("\n--- Starting Text Inference Sweep ---")
+#     for idx, text in enumerate(test_phrases, 1):
+#         print(f"\n📝 Test #{idx}: \"{text}\"")
+#         print("-" * 55)
+        
+#         try:
+#             cleaned = clean_text(text)
+#             if cleaned != text.strip():
+#                 print(f"  🧹 Cleaned text: \"{cleaned}\"")
+#             result = clf.predict(cleaned)
+            
+#             print(f"  🎯 Predicted Emotion : {result['emotion'].upper()}")
+#             print(f"  📈 Confidence Score   : {result['confidence']:.4f}")
+            
+#             if result['all_scores']:
+#                 print("  📊 Full Sorted Probability Distribution:")
+#                 for emotion, score in result['all_scores'].items():
+#                     # Format as a clean visual bar representation for easier terminal debugging
+#                     bar = "█" * int(score * 20)
+#                     print(f"    └─ {emotion:<9}: {score:.4f} {bar}")
+                    
+#         except Exception as e:
+#             print(f"  ❌ Inference Processing Failed: {e}")
+#             import traceback
+#             traceback.print_exc()
+
+#     print("\n====================================================")
+#     print("✅ Emotion Classifier Test Evaluation Complete!")
+#     print("====================================================")
+
+# if __name__ == "__main__":
+#     test_isolated_emotion_classifier()
