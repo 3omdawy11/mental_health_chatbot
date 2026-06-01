@@ -18,12 +18,7 @@ class EmotionClassifier(nn.Module):
         vocab_size     = config["vocab_size"]
 
         # 1. Embedding
-        self.embedding = nn.Embedding(
-            num_embeddings = vocab_size,
-            embedding_dim  = embed_dim,
-            padding_idx    = 0
-        )
-
+        self.embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
         self.embed_dropout = nn.Dropout(0.2)
 
         # 2. Bidirectional LSTM

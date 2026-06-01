@@ -25,10 +25,16 @@ fasttext-wheel
 matplotlib
 seaborn
 
-# Project.toml 
+# pyproject.toml 
 -e .
 
 # Utilities
 python-dotenv
 tqdm
 groq
+
+
+
+fastapi
+uvicorn[standard]
+pydantic

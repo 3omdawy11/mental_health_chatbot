@@ -58,6 +58,7 @@ class LanguageDetector:
     # ── Lazy loading ──────────────────────────────────────────────────────────
 
     def _load(self) -> None:
+        print("model directory: " +str(self._dir))
         if self._loaded:
             return
 

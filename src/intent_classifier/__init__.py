@@ -1,1 +1,1 @@
-from .intent_classifier import classify_intent
+from .intent_classifier import IntentClassifier
