@@ -155,7 +155,7 @@ class Embedder:
 
     # ── HyDE ─────────────────────────────────────────────────────────────────
 
-    def _generate_hypothetical(self, query: str) -> Optional[str]:
+    def generate_hypothetical(self, query: str) -> Optional[str]:
         """
         Use Groq to generate a hypothetical counsellor response to the query.
         Returns None on failure.
@@ -167,7 +167,7 @@ class Embedder:
             client = Groq(api_key=self._groq_api_key, timeout=8.0)
             prompt = _HYDE_PROMPT.replace("{query}", query)
             resp = client.chat.completions.create(
-                model="llama-3.1-8b-instant",   # fast model — just generating text
+                model="llama-3.3-70b-versatile",   # fast model — just generating text
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=150,
                 temperature=0.3,

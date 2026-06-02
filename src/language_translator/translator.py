@@ -15,7 +15,7 @@ Rules:
 
 class Translator:
     def __init__(self, groq_api_key: str = None,
-                 model: str = "llama-3.1-8b-instant"):
+                 model: str = "llama-3.3-70b-versatile"):
         self.client = Groq(api_key=groq_api_key or os.environ["GROQ_API_KEY"])
         self.model  = model
 

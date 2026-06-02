@@ -91,7 +91,7 @@ class IntentClassifier:
 
         try:
             response = self.client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": f"Message: {user_message}"}
@@ -120,4 +120,4 @@ class IntentClassifier:
         }
 
     def __repr__(self) -> str:
-        return f"IntentClassifier(model='llama-3.1-8b-instant', status='ready')"
+        return f"IntentClassifier(model='llama-3.3-70b-versatile', status='ready')"

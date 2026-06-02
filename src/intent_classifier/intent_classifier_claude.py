@@ -20,7 +20,7 @@ Design decisions
   rule-based keyword matching misses ("I can't get out of bed" = mental health,
   not out_of_scope).
 * Primary model  : llama-3.3-70b-versatile  (best Groq quality, fast)
-* Fallback model : llama-3.1-8b-instant     (quota / rate-limit safety net)
+* Fallback model : llama-3.3-70b-versatile     (quota / rate-limit safety net)
 * Retry with exponential back-off on transient errors.
 * Hard fallback  : if LLM returns anything unexpected → "out_of_scope".
 * Confidence is estimated from the raw response:
@@ -67,7 +67,7 @@ VALID_INTENTS: list[str] = [
 # NOTE: The original phase spec mentioned "gpt-oss-120b" — that is an internal
 # OpenAI label, NOT a Groq model.  Groq serves the Llama / Mixtral family.
 PRIMARY_MODEL  = "llama-3.3-70b-versatile"   # best quality on Groq
-FALLBACK_MODEL = "llama-3.1-8b-instant"      # fastest, lowest latency
+FALLBACK_MODEL = "llama-3.3-70b-versatile"      # fastest, lowest latency
 
 _ROOT        = Path(__file__).resolve().parent.parent.parent
 _PROMPT_PATH = _ROOT / "src" / "prompts" / "intent_classification.txt"

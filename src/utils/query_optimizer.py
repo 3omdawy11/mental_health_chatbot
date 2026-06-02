@@ -70,26 +70,37 @@ _FILLERS = re.compile(
     re.IGNORECASE,
 )
 
-_REWRITE_PROMPT = """You are a mental health search query optimizer.
-Rewrite the user message into an enriched search query for a mental health knowledge base.
+_REWRITE_PROMPT = """You are an expert mental health search query optimizer specialized in semantic retrieval augmentation.
 
-Rules:
-- Replace informal language with clinical/psychological terms
-- Add relevant synonyms and related concepts
-- Include treatment/coping approaches if implied
-- Remove filler words (I, feel, really, just, etc.)
-- Output ONLY the rewritten query — no explanation, no punctuation at the end
-- Keep it under 20 words
+Your task is to rewrite the user's message into an enriched, naturally flowing search query that maximizes retrieval accuracy from a mental health knowledge base.
+
+Guidelines:
+- PRESERVE the full original meaning, context, and emotional content of the message
+- PRESERVE connecting words, pronouns and auxiliary verbs (I, was, were, have, been, am, feel, my, me, and, but, because) — they maintain sentence flow and meaning
+- KEEP personal context clues (e.g. "at work", "since last year", "after breakup") — they are critical for retrieval
+- ENRICH naturally by weaving in clinical/psychological synonyms as part of the sentence — not as a keyword list at the end
+- ADD relevant treatment approaches or coping strategies woven naturally into the text
+- Write like a human describing their situation — NOT like a list of medical keywords
+- DO NOT append a block of keywords at the end of the sentence
+- DO NOT summarize or compress the original message
+- Output ONLY the rewritten query — no explanation, no preamble, no punctuation at the end
+- Keep it under 40 words
 
 Examples:
 Input: "i feel anxious at work"
-Output: anxiety stress nervousness worry workplace occupational pressure coping strategies
+Output: I feel anxious and nervous at work and I am struggling with occupational stress and workplace pressure and looking for coping strategies to manage my anxiety
 
 Input: "cant sleep and feel hopeless"
-Output: insomnia sleep disorder hopelessness depression fatigue low mood treatment
+Output: I cannot sleep and I have been feeling hopeless and helpless and my low mood and depression are causing fatigue and I need help with insomnia and sleep disorder treatment
 
 Input: "my relationship is falling apart"
-Output: relationship conflict interpersonal difficulties communication breakdown attachment issues
+Output: my relationship is falling apart and I am struggling with conflict and communication breakdown and interpersonal difficulties and I need support for attachment issues and couples therapy
+
+Input: "I've been really sad since my mom passed away"
+Output: I have been really sad since my mom passed away and I am going through grief and bereavement and mourning and the loss is causing depression and emotional pain and I need grief counseling
+
+Input: "I have been feeling down and unmotivated these days all I want to do is play games and sleep"
+Output: I have been feeling down and unmotivated these days and all I want to do is play games and sleep and this is affecting my motivation and I am experiencing low mood and depression and anhedonia
 
 Input: "{text}"
 Output:"""
@@ -102,13 +113,13 @@ class QueryOptimizer:
     Parameters
     ----------
     api_key : Groq API key (defaults to GROQ_API_KEY env var).
-    model   : Groq model (default: llama-3.1-8b-instant — fast, good enough).
+    model   : Groq model (default: llama-3.3-70b-versatile — fast, good enough).
     """
 
     def __init__(
         self,
         api_key: Optional[str] = None,
-        model: str = "llama-3.1-8b-instant",
+        model: str = "llama-3.3-70b-versatile",
         timeout: float = 6.0,
     ) -> None:
         self._api_key = api_key or os.getenv("GROQ_API_KEY", "")
