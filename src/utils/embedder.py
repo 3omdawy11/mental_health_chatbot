@@ -201,7 +201,7 @@ class Embedder:
         alpha : weight on original query (0=all-hypothetical, 1=no-HyDE)
         """
         q_vec = self.embed_text(query)
-        hyp   = self._generate_hypothetical(query)
+        hyp   = self.generate_hypothetical(query)
 
         if hyp is None:
             logger.info("HyDE: no hypothetical generated — using plain embedding")

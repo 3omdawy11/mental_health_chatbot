@@ -216,22 +216,29 @@ class VectorDBManager:
 
             points = []
             for chunk, vec in zip(batch_chunks, batch_vecs):
+                meta = chunk.get("metadata", {}) or {}
+
                 payload = {
-                    "text":        chunk.get("text", ""),
-                    "source":      chunk.get("source", ""),
-                    "source_type": chunk.get("source_type", ""),
-                    "section":     chunk.get("section", ""),
-                    "tokens":      chunk.get("tokens", 0),
-                    "chunk_id":    chunk.get("id", ""),
+                    "text": chunk.get("text", ""),
+                    "source": meta.get("source", chunk.get("source", "")),
+                    "source_type": meta.get("source_type", chunk.get("source_type", "")),
+                    "section": meta.get("section", chunk.get("section", "")),
+                    "tokens": meta.get("tokens", chunk.get("tokens", 0)),
+                    "chunk_id": chunk.get("chunk_id", chunk.get("id", "")),
+                    "context_query": meta.get("context_query", ""),
+                    "original_question": meta.get("original_question", ""),
+                    "quality_rating": meta.get("quality_rating", None),
                 }
+
+                point_id = str(uuid.uuid4())
+
                 points.append(
                     PointStruct(
-                        id=str(uuid.uuid4()),    # Qdrant needs str or int UUID
-                        vector=vec.tolist(),
+                        id=point_id,
+                        vector=np.asarray(vec, dtype=np.float32).tolist(),
                         payload=payload,
                     )
                 )
-
             client.upsert(
                 collection_name=self._col_name,
                 points=points,

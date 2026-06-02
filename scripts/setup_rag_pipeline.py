@@ -1,5 +1,5 @@
 """
-scripts/03_setup_rag.py
+scripts/setup_rag.py
 ========================
 Phase 6: Index the knowledge base into Qdrant.
 
@@ -13,7 +13,7 @@ Steps
 6. Verify count and run test queries
 
 Run from project root:
-    python scripts/03_setup_rag.py
+    python scripts/setup_rag.py
 
 Flags:
     --recreate    Delete and rebuild the collection from scratch
@@ -35,10 +35,6 @@ from src.utils.embedder   import Embedder
 from src.utils.vector_db  import VectorDBManager
 
 KB_PATH = ROOT / "data" / "processed" / "knowledge_base_combined.json"
-LOGS    = ROOT / "logs"
-LOGS.mkdir(exist_ok=True)
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 
 def load_knowledge_base(limit: int | None = None) -> list[dict]:
@@ -58,9 +54,10 @@ def load_knowledge_base(limit: int | None = None) -> list[dict]:
     # Stats
     sources: dict[str, int] = {}
     for c in chunks:
-        st = c.get("source_type", "unknown")
+        meta = c.get("metadata", {}) or {}
+        st = meta.get("source_type", c.get("source_type", "unknown"))
         sources[st] = sources.get(st, 0) + 1
-
+        
     print(f"  Total chunks  : {len(chunks):,}")
     for src, cnt in sources.items():
         print(f"    {src:<30}: {cnt:,}")
@@ -105,8 +102,41 @@ def _demo_chunks() -> list[dict]:
         for i, (text, src, section) in enumerate(items)
     ]
 
+def get_meta(chunk: dict) -> dict:
+    return chunk.get("metadata", {}) or {}
 
-def embed_chunks(chunks: list[dict]) -> np.ndarray:
+def build_retrieval_text(chunk: dict) -> str:
+    meta = get_meta(chunk)
+
+    section = meta.get("section", "") or chunk.get("section", "")
+    source_type = meta.get("source_type", "") or chunk.get("source_type", "")
+    question = meta.get("original_question", "") or meta.get("context_query", "")
+    answer = chunk.get("text", "")
+
+    parts = []
+    if section:
+        parts.append(f"Section: {section}")
+
+    if source_type in {"counseling_qa", "qa", "faq"}:
+        if question:
+            parts.append(f"Question: {question}")
+        if answer:
+            parts.append(f"Answer: {answer}")
+    elif source_type == 'pdf_file':
+        if section:
+            parts.append(f"Question: {section}")
+        else:
+            parts.append(f"Question: {question}")
+        if answer:
+            parts.append(f"Answer: {answer}")
+    else:
+        if answer:
+            parts.append(f"Content: {answer}")
+
+    return "\n".join(parts).strip()
+
+
+def embed_chunks(chunks: list[dict]):
     print(f"\n[2/5] Embedding {len(chunks):,} chunks …")
     emb  = Embedder()
     t0   = time.time()
@@ -162,12 +192,6 @@ def test_queries(db: VectorDBManager, emb: Embedder) -> None:
         print(f"\n  {mark} [{ms:.0f}ms] \"{query}\"")
         for i, r in enumerate(results, 1):
             print(f"     {i}. score={r['score']:.3f}  [{r['source_type']}]  {r['text'][:65]}")
-
-    # Log
-    with open(LOGS / "model_performance.log", "a") as f:
-        f.write(f"\n{'='*60}\nPhase 6 — RAG Setup complete\n")
-        f.write(f"Mode: {'cloud' if db.is_cloud else 'local'}\n")
-        f.write(f"Test queries: {'PASSED' if all_ok else 'PARTIAL'}\n")
 
 
 # ─────────────────────────────────────────────────────────────────────────────

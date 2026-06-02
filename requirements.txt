@@ -38,3 +38,6 @@ groq
 fastapi
 uvicorn[standard]
 pydantic
+
+qdrant-client
+pyyaml
