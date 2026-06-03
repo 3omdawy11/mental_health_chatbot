@@ -4,10 +4,10 @@ import torch
 import torch.nn as nn
 
 
-class EmotionClassifier(nn.Module):
+class EmotionClassifierModel(nn.Module):
 
     def __init__(self, config):
-        super(EmotionClassifier, self).__init__()
+        super(EmotionClassifierModel, self).__init__()
 
         embed_dim      = config["embed_dim"]
         lstm_units     = config["lstm_units"]

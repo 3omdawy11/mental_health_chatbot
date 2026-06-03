@@ -542,7 +542,7 @@ import torch
 import torch.nn as nn
 from transformers import BertTokenizer
 # Import the PyTorch module architecture you provided
-from src.emotion_classifier.model import EmotionClassifier as BiLSTMNet
+from src.emotion_classifier.model import EmotionClassifierModel as BiLSTMNet
 
 # ── Mappings & Constants ──────────────────────────────────────────────────────
 EMOTION_LABELS = ['sadness','joy','love','anger','fear','surprise']

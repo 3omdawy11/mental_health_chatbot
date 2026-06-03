@@ -18,9 +18,11 @@ from src.emotion_classifier import (
     load_tokenizer,
     save_tokenizer,
     get_dataloaders,
-    EmotionClassifier,
-    train
+    train,
+    EmotionClassifierModel
 )
+
+
 from config import BASELINE_RUN_CONFIG, RUN2_CONFIG, RUN3_CONFIG, RUN4_CONFIG
 
 # ── 0. Argument Parsing ───────────────────────────────────────────────────────
@@ -93,7 +95,7 @@ print(f"[DATALOADER] Sample labels:        {sample_batch['label'][:8]}")
 
 # ── 6. Model ──────────────────────────────────────────────────────────────────
 print("\n[MODEL] Building EmotionClassifier...")
-model = EmotionClassifier(run_config).to(device)
+model = EmotionClassifierModel(run_config).to(device)
 total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print(f"[MODEL] Trainable parameters: {total_params:,}")
 
