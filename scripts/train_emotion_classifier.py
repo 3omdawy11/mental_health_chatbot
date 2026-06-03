@@ -10,6 +10,7 @@ load_dotenv()
 
 if IS_KAGGLE:
     from kaggle_secrets import UserSecretsClient
+    user_secrets = UserSecretsClient()
 
 
 from src.emotion_classifier import (
@@ -53,7 +54,8 @@ print(f"\n[DEVICE] Using: {device}")
 
 # ── 2. Wandb Login ────────────────────────────────────────────────────────────
 print("\n[WANDB] Logging in...")
-wandb.login(key=os.getenv("WANDB_API_KEY"))
+api_key = UserSecretsClient().get_secret("WANDB_API_KEY") if IS_KAGGLE else os.getenv("WANDB_API_KEY")
+wandb.login(key=api_key)
 print("[WANDB] Login successful")
 
 
