@@ -34,7 +34,7 @@ WANDB_PROJECT = "mental-health-chatbot"
 
 BASELINE_RUN_CONFIG = {
     "name"          : "baseline-bilstm",
-    "epochs"        : 20,
+    "epochs"        : 20,   # 10 before, but let's give it more time to see if it can overfit
     "learning_rate" : 1e-3,
     "batch_size"    : 64,
     "embed_dim"     : 128,
