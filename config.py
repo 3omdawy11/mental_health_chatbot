@@ -34,7 +34,7 @@ WANDB_PROJECT = "mental-health-chatbot"
 
 BASELINE_RUN_CONFIG = {
     "name"          : "baseline-bilstm",
-    "epochs"        : 20,   # 10 before, but let's give it more time to see if it can overfit
+    "epochs"        : 10,
     "learning_rate" : 1e-3,
     "batch_size"    : 64,
     "embed_dim"     : 128,
@@ -47,6 +47,6 @@ BASELINE_RUN_CONFIG = {
     "vocab_size"    : 30522,   # ← added (bert-base-uncased)
 }
 
-RUN2_CONFIG = {**BASELINE_RUN_CONFIG, "name": "lr-tuning",   "learning_rate": 3e-4}
-RUN3_CONFIG = {**RUN2_CONFIG,         "name": "bigger-lstm",  "lstm_units": 256}
-RUN4_CONFIG = {**RUN3_CONFIG,         "name": "regularized",  "dropout": 0.5}
+RUN2_CONFIG = {**BASELINE_RUN_CONFIG, "name": "lr-tuning",   "learning_rate": 3e-4, "epochs": 30}
+RUN3_CONFIG = {**RUN2_CONFIG,         "name": "bigger-lstm",  "lstm_units": 256, "epochs": 30}
+RUN4_CONFIG = {**RUN3_CONFIG,         "name": "regularized",  "dropout": 0.5, "epochs": 30}
