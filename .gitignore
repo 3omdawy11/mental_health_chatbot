@@ -219,7 +219,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-models/**/*.pt
-models/**/*.pkl
-models/**/*.yaml
-
+models/**/*
+# git rm --cached models/**/*.json
+# git commit -m "Stop tracking *.json"

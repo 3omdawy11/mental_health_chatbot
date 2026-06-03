@@ -532,7 +532,9 @@
 #         return f"EmotionClassifier(model_dir='{self._dir}', device={self._device}, {status})"
 
 
-
+# """
+# src/modules/emotion_classifier.py
+# ===================================
 
 import os
 import pickle
@@ -542,7 +544,7 @@ import torch
 import torch.nn as nn
 from transformers import BertTokenizer
 # Import the PyTorch module architecture you provided
-from src.emotion_classifier.model import EmotionClassifierModel as BiLSTMNet
+from src.emotion_classifier.model import EmotionClassifier as BiLSTMNet
 
 # ── Mappings & Constants ──────────────────────────────────────────────────────
 EMOTION_LABELS = ['sadness','joy','love','anger','fear','surprise']
