@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.intent_classifier.intent_classifier import IntentClassifier
 from src.language_detector.language_detector import LanguageDetector
-from src.emotion_classifier.emotion_classifier import EmotionClassifier
+from src.emotion_classifier import EmotionClassifier
 from src.language_translator import Translator
 from src.ner_extractor import NERExtractor
 from src.utils import QueryOptimizer, Embedder

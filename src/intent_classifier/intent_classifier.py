@@ -113,7 +113,8 @@ class IntentClassifier:
 
         # Basic text scan heuristic fallback for immediate safety checks
         is_crisis = any(word in user_message.lower() for word in ["suicide", "kill myself", "end my life", "self harm"])
-
+        print(f"Predicted intent: '{intent}' | Crisis flag: {is_crisis}")
+        print(f"Original message: '{user_message}'")
         return {
             "intent": intent,
             "is_crisis": is_crisis

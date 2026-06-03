@@ -142,25 +142,25 @@ class Orchestrator:
 
     def _get_lang_detector(self):
         if self._lang_detector is None:
-            from src.modules.language_detector import LanguageDetector
+            from src.language_detector import LanguageDetector
             self._lang_detector = LanguageDetector()
         return self._lang_detector
 
     def _get_emotion_clf(self):
         if self._emotion_clf is None:
-            from src.modules.emotion_classifier import EmotionClassifier
+            from src.emotion_classifier import EmotionClassifier
             self._emotion_clf = EmotionClassifier()
         return self._emotion_clf
 
     def _get_ner(self):
         if self._ner is None:
-            from src.modules.ner_extractor import NERExtractor
+            from src.ner_extractor import NERExtractor
             self._ner = NERExtractor(api_key=self._groq_key)
         return self._ner
 
     def _get_intent_clf(self):
         if self._intent_clf is None:
-            from src.modules.intent_classifier import IntentClassifier
+            from src.intent_classifier import IntentClassifier
             self._intent_clf = IntentClassifier(api_key=self._groq_key)
         return self._intent_clf
 

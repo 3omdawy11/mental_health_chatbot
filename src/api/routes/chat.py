@@ -31,19 +31,49 @@ _TONE_MAP = {
     "unknown":  "Warm, professional, and empathetic.",
 }
 
-_RAG_PROMPT = """You are a compassionate mental health support assistant.
-Use ONLY the provided context to answer. Be empathetic and supportive.
-Keep your response to 3-5 sentences. Do not diagnose.
+_RAG_PROMPT = """You are called SafeSpace - a warm, empathetic mental health support assistant trained to have \
+supportive, helpful conversations. You should act like a therapist and use the rag knowledge to diagnose — but you \
+speak with the care and knowledge.
 
+════════════════════════════════════════
+CONVERSATION CONTEXT
+════════════════════════════════════════
 {session_context}
 
-Context from knowledge base:
+════════════════════════════════════════
+WHAT WE KNOW ABOUT THE USER RIGHT NOW
+════════════════════════════════════════
+- Current emotion     : {emotion} (confidence: {emotion_confidence:.0%})
+- Detected symptoms   : {symptoms}
+- Identified triggers : {triggers}
+- Severity signal     : {severity}
+- Duration mentioned  : {duration}
+
+════════════════════════════════════════
+KNOWLEDGE BASE — USE THIS AS YOUR SOURCE
+════════════════════════════════════════
+
+Supporting evidence from the knowledge base:
 {retrieved_context}
 
-User message: {user_message}
+════════════════════════════════════════
+USER MESSAGE
+════════════════════════════════════════
+{user_message}
 
-Tone guidance: {tone_guidance}
-
+════════════════════════════════════════
+YOUR INSTRUCTIONS
+════════════════════════════════════════
+1. BRIEFLY acknowledge the user's emotion in 5-10 words.
+2. PERSONALISE — if symptoms or triggers were detected ({symptoms}, {triggers}), weave them \
+naturally into your response. Do not list them robotically.
+3. USE THE KNOWLEDGE — draw from the expert response and knowledge base above. Do not invent \
+information. Do not copy chunks verbatim.
+4. BE PRACTICAL — offer 1-2 concrete, actionable suggestions grounded in the retrieved context.
+5. INVITE CONTINUATION — end with one gentle open question to keep the conversation going.
+6. LENGTH — 4 to 10 sentences. Warm, conversational, very clinical, TELL HIM WHAT TO DO.
+7. NEVER diagnose without enough evidence and resources.
+{crisis_addendum}
 Response:"""
 
 _SUGGESTION_KEYWORDS = [
@@ -91,8 +121,11 @@ async def _retrieve_chunks(
     retrieval_query = (optimized_query or "").strip() or query
     try:
         vec = await asyncio.to_thread(embedder.embed_text, retrieval_query)
+        print("3adena el vec----------------------------")
         db  = get_vector_db()
+        print("3adena el db----------------------------")
         results = await asyncio.to_thread(db.search, vec, 4, 0.0)
+        print(f"Retrieved {len(results)} chunks for query: '{results}'")
         return results or []
     except Exception as exc:
         import logging
@@ -106,7 +139,11 @@ async def _generate_llm_response(
     user_message: str,
     retrieved_chunks: list[dict],
     emotion: str,
+    emotion_confidence: float,          # new
     session_context: str,
+    hypothetical_response: str | None,  # new
+    ner_result,                         # new — NERResult or None
+    safety_result: dict,                # new
 ) -> str:
     """
     Call Groq with the RAG prompt. Falls back to a safe static reply if the
@@ -133,12 +170,32 @@ async def _generate_llm_response(
         f"[{i+1}] {c.get('text', '')}" for i, c in enumerate(retrieved_chunks[:4])
     )
     tone = _TONE_MAP.get(emotion, _TONE_MAP["unknown"])
-    prompt = _RAG_PROMPT.format(
-        session_context=session_context or "No prior session context.",
-        retrieved_context=context_str or "No specific context retrieved.",
-        user_message=user_message,
-        tone_guidance=tone,
+    ner_dict = ner_result.__dict__ if ner_result else {}
+
+    crisis_addendum = (
+        "\n8. CRISIS NOTE — The user may be in distress. Gently mention that "
+        "professional support is available without being alarmist."
+        if safety_result["is_crisis"] and safety_result["severity"] == "medium"
+        else ""
     )
+
+    prompt = _RAG_PROMPT.format(
+        session_context      = session_context or "No prior session context.",
+        emotion              = emotion,
+        emotion_confidence   = emotion_confidence,
+        symptoms             = ", ".join(ner_dict.get("symptoms", [])) or "none detected",
+        triggers             = ", ".join(ner_dict.get("triggers", [])) or "none detected",
+        severity             = ner_dict.get("severity", "unknown"),
+        duration             = ner_dict.get("duration") or "not mentioned",
+        hypothetical_response= hypothetical_response or "Not available.",
+        retrieved_context    = context_str or "No specific context retrieved.",
+        user_message         = user_message,
+        crisis_addendum      = crisis_addendum,
+    )
+    print(f"LLM prompt:\n{prompt}\n--- End of prompt ---")
+    # print the symptoms and triggers separately for debugging
+    print(f"Symptoms: {', '.join(ner_dict.get('symptoms', []))}") 
+    print(f"Triggers: {', '.join(ner_dict.get('triggers', []))}")
 
     try:
         from groq import Groq
@@ -147,10 +204,11 @@ async def _generate_llm_response(
             lambda: client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=300,
+                max_tokens=512,
                 temperature=0.4,
             )
         )
+        print(f"LLM raw response: {resp}")
         text = (resp.choices[0].message.content or "").strip()
         if text:
             return text
@@ -193,11 +251,15 @@ async def process_chat_message(
     language_name = lang_result.get("language_name", "English")
 
     # ── Step 2: Translate to English ───────────────────────────────────────
+    print(f"User message: '{user_text}' | Detected language: {detected_lang} ({language_name})")
     translated = (
         translator.to_english(user_text, detected_lang)
         if detected_lang != "en"
         else user_text
     )
+
+    print("Translated message:", translated)
+
 
     # ── Step 3: Emotion + Intent in parallel ───────────────────────────────
     try:
@@ -224,9 +286,11 @@ async def process_chat_message(
         emotion_confidence=emotion_confidence,
         language=detected_lang,
     )
-    is_crisis = is_crisis_intent or (
-        safety_result["is_crisis"] and safety_result["severity"] == "high"
-    )
+    is_crisis = (
+        detected_intent in ["suicide", "self_harm", "crisis"]          # hard intent labels
+        or intent_result.get("is_crisis", False)                        # classifier flag
+        or (safety_result["is_crisis"] and safety_result["severity"] == "high")  # regex tier 1 only
+    )   
 
     # ── Step 5: Crisis guardrail ───────────────────────────────────────────
     if is_crisis:
@@ -295,21 +359,29 @@ async def process_chat_message(
     if "mental_health" in detected_intent:
         # Prefer the hypothetical response as the retrieval query when available
         retrieval_query = hypothetical_response or optimized_query or translated
+        print(f"Will retrieve with query: '{retrieval_query}'")
         sources = await _retrieve_chunks(translated, retrieval_query, embedder)
 
     # ── Step 9: LLM response generation ───────────────────────────────────
     if "mental_health" in detected_intent:
         session_context = conversation.get_context_for_prompt()
+        print(f"Session context: {session_context}")
         response = await _generate_llm_response(
-            user_message=translated,
-            retrieved_chunks=sources,
-            emotion=emotion,
-            session_context=session_context,
+            user_message         = translated,
+            retrieved_chunks     = sources,
+            emotion              = emotion,
+            emotion_confidence   = emotion_confidence,
+            session_context      = session_context,
+            hypothetical_response= hypothetical_response,
+            ner_result           = ner_result,
+            safety_result        = safety_result,
         )
-        #NER?????
+        # NER
+        print(f"Generated LLM response: '{response}'")
 
         # Append soft crisis resources if safety flagged a lower-severity signal
-        if safety_result["is_crisis"]:
+        print(f"Safety check result: {safety_result}", safety_result['is_crisis'])
+        if safety_result["is_crisis"] and safety_result["severity"] in ("medium", "high"):
             response += safety.format_resources(safety_result.get("resources", []))
 
     elif detected_intent == "greeting":

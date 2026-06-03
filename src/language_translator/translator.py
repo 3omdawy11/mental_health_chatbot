@@ -10,7 +10,11 @@ Rules:
 - Output ONLY the translated text. No explanations, no notes, no preamble.
 - If the text is already in English, return it exactly as-is.
 - Preserve the original meaning, tone, and emotion faithfully.
-- Do not add greetings or commentary of any kind."""
+- Do not add greetings or commentary of any kind.
+- Do not answer questions or make assumptions about the text. Only translate.
+
+{text}
+"""
 
 
 class Translator:
@@ -20,18 +24,21 @@ class Translator:
         self.model  = model
 
     def to_english(self, text: str, source_lang: str) -> str:
+        print(f"text: '{text}' | source_lang: '{source_lang}'")
         if source_lang == "en":
             return text
         try:
+            prompt = SYSTEM_PROMPT.format(text=text)
+            print(f"Translation prompt: '{prompt}'")
             resp = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user",   "content": text},
+                    {"role": "user", "content": prompt},
                 ],
                 max_tokens=512,
                 temperature=0.0,
             )
+            print(f"Raw translation response: {resp}")
             translated = resp.choices[0].message.content.strip()
             logger.info(f"Translated [{source_lang}→en]: {translated[:80]}")
             return translated
