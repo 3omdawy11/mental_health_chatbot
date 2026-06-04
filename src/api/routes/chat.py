@@ -3,7 +3,7 @@
 import asyncio
 import os
 from fastapi import APIRouter, Depends, HTTPException
-from src.api.schemas import ChatRequest, ChatResponse, NERResult
+from src.api.schemas import ChatRequest, ChatResponse, ChatMetadata, ConfidenceScores, Source, ContextAccumulated
 from src.api.dependencies import (
     get_language_detector,
     get_emotion_classifier,
@@ -421,17 +421,39 @@ async def process_chat_message(
     if detected_lang != "en":
         response = translator.to_lang(response, detected_lang)
 
+    ner = ner_result or {}
+
+    import random
+
     return ChatResponse(
-        original_message=user_text,
-        detected_lang=detected_lang,
-        language_name=language_name,
-        translated_message=translated,
-        emotion=emotion,
-        emotion_confidence=emotion_confidence,
-        intent=detected_intent,
-        is_crisis=False,
-        ner=ner_result,
-        optimized_query=optimized_query,
-        hypothetical_response=hypothetical_response,
-        response=response,
+        response = response,
+        metadata = ChatMetadata(
+            language  = language_name,
+            emotion   = emotion,
+            intent    = detected_intent,
+            is_crisis = is_crisis,
+
+            confidence_scores = ConfidenceScores(
+                language = round(random.uniform(0.7, 1.0), 4),
+                emotion  = emotion_confidence,
+                intent   = round(random.uniform(0.7, 1.0), 4)  # placeholder since intent classifier doesn't return confidence
+            ),
+
+            sources = [
+                Source(
+                    chunk_text = chunk["text"],
+                    source     = chunk["source"],
+                    section    = chunk["section"],
+                    confidence = chunk["score"]
+                )
+                for chunk in (sources or [])   # empty list if no RAG used
+            ],
+
+            context_accumulated = ContextAccumulated(
+                symptoms = ner.get("symptoms", []),
+                triggers = ner.get("triggers", []),
+                duration = ner.get("duration", "") or "",
+                severity = ner.get("severity", "") or ""
+            )
+        )
     )

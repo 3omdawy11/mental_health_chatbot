@@ -1,26 +1,42 @@
+# src/api/schemas.py
+
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, List
+from typing import Optional, List
 
 class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000,
                          example="I feel very anxious lately")
 
-class NERResult(BaseModel):
-    symptoms: List[str]
-    triggers: List[str]
-    duration: Optional[str]
-    severity: str
+# ── Nested metadata models ────────────────────────────────────────────────────
+
+class Source(BaseModel):
+    chunk_text : str
+    source     : str
+    section    : str
+    confidence : float
+
+class ContextAccumulated(BaseModel):
+    symptoms : List[str]
+    triggers : List[str]
+    duration : str
+    severity : str
+
+class ConfidenceScores(BaseModel):
+    language : float
+    emotion  : float
+    intent   : float
+
+class ChatMetadata(BaseModel):
+    language            : str
+    emotion             : str
+    intent              : str
+    confidence_scores   : ConfidenceScores
+    sources             : List[Source]
+    is_crisis           : bool
+    context_accumulated : ContextAccumulated
+
+# ── Main response ─────────────────────────────────────────────────────────────
 
 class ChatResponse(BaseModel):
-    original_message:    str
-    detected_lang:       str
-    language_name:       str
-    translated_message:  str
-    emotion:             str
-    emotion_confidence:  float
-    intent:              str
-    is_crisis:           bool
-    ner:                 Optional[NERResult]    # None if intent == general
-    hypothetical_response: Optional[str]          # None if generation failed
-    optimized_query:     Optional[str]          # None if intent == general
-    response:            str
+    response : str
+    metadata : ChatMetadata
