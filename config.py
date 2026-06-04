@@ -50,3 +50,16 @@ BASELINE_RUN_CONFIG = {
 RUN2_CONFIG = {**BASELINE_RUN_CONFIG, "name": "lr-tuning",   "learning_rate": 3e-4, "epochs": 30}
 RUN3_CONFIG = {**RUN2_CONFIG,         "name": "bigger-lstm",  "lstm_units": 256, "epochs": 30}
 RUN4_CONFIG = {**RUN3_CONFIG,         "name": "regularized",  "dropout": 0.5, "epochs": 30}
+
+ABLATION_HIGH_CAPACITY = {
+    "name": "ablation-high-capacity-regularized",
+    "epochs": 25,
+    "learning_rate": 3e-4,          # Slightly more conservative for big layers
+    "lstm_units": 512,
+    "num_layers": 3,
+    "embed_dim": 256,
+    "fc_hidden_dim": 128,
+    "dropout": 0.35,                # <-- Forced regularization defense
+    "batch_size": 64,               # Stable gradient steps
+    "max_len": 64,
+}
