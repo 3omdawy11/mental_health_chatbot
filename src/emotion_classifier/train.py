@@ -133,15 +133,15 @@ def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFI
     wandb.watch(model, log='all', log_freq=10)
 
     # ── INJECT CLASS WEIGHTS INTO LOSS CRITERION ─────────────────────────────
-    class_weights = calculate_loss_weights(train_loader, device)
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    ##class_weights = calculate_loss_weights(train_loader, device)
+    criterion = nn.CrossEntropyLoss()
     # ─────────────────────────────────────────────────────────────────────────
     
     optimizer = AdamW(model.parameters(), lr=run_config["learning_rate"], weight_decay=0.0)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5)
 
     best_val_f1    = 0.0  # Monitoring Validation Macro F1 instead of Accuracy
-    patience       = 6    # Slightly increased to give overfitting presets room to breathe
+    patience       = 4   # Slightly increased to give overfitting presets room to breathe
     patience_count = 0
 
     print(f"\nTraining on: {device}")
