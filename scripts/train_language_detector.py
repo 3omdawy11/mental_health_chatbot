@@ -57,6 +57,39 @@ for d in [MODEL_DIR, LOGS]:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Language priority list for low-confidence fallback
+#
+# When the model is uncertain (confidence < threshold), we scan the top-N
+# predicted languages and return the highest-priority one that appears there.
+# Order reflects approximate global speaker population / web prevalence.
+# Edit freely — only languages your model actually knows matter here.
+# ─────────────────────────────────────────────────────────────────────────────
+LANGUAGE_PRIORITY = [
+    "en",   # English        ~1.5 B speakers
+    "zh",   # Chinese        ~1.1 B
+    "hi",   # Hindi          ~600 M
+    "es",   # Spanish        ~560 M
+    "fr",   # French         ~280 M
+    "ar",   # Arabic         ~270 M
+    "bn",   # Bengali        ~270 M
+    "pt",   # Portuguese     ~260 M
+    "ru",   # Russian        ~255 M
+    "ur",   # Urdu           ~230 M
+    "id",   # Indonesian     ~200 M
+    "de",   # German         ~135 M
+    "ja",   # Japanese       ~125 M
+    "tr",   # Turkish        ~88 M
+    "ko",   # Korean         ~82 M
+    "vi",   # Vietnamese     ~77 M
+    "it",   # Italian        ~68 M
+    "fa",   # Persian        ~65 M
+    "pl",   # Polish         ~45 M
+    "nl",   # Dutch          ~30 M
+    "sw",   # Swahili        ~20 M
+]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # 1.  Load data
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -78,7 +111,7 @@ def build_vectorizer(train_texts: pd.Series) -> TfidfVectorizer:
     print("\n[2/6] Fitting TF-IDF vectoriser …")
     vec = TfidfVectorizer(
         max_features=50_000,
-        ngram_range=(2, 4),      # char n-grams 2-4
+        ngram_range=(2, 6),      # char n-grams 2-6
         analyzer="char_wb",      # character-level, word boundaries added
         min_df=2,
         max_df=0.95,
