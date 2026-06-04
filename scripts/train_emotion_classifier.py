@@ -23,7 +23,7 @@ from src.emotion_classifier import (
 )
 
 
-from config import BASELINE_RUN_CONFIG, RUN2_CONFIG, RUN3_CONFIG, RUN4_CONFIG, ABLATION_HIGH_CAPACITY
+from config import BASELINE_RUN_CONFIG, RUN2_CONFIG, RUN3_CONFIG, RUN4_CONFIG, RUN5_CONFIG, RUN6_CONFIG
 
 # ── 0. Argument Parsing ───────────────────────────────────────────────────────
 
@@ -32,7 +32,8 @@ RUN_MAP = {
     "run2"     : RUN2_CONFIG,
     "run3"     : RUN3_CONFIG,
     "run4"     : RUN4_CONFIG,
-    "run5"     : ABLATION_HIGH_CAPACITY,
+    "run5"     : RUN5_CONFIG,
+    "run6"     : RUN6_CONFIG,
 }
 
 parser = argparse.ArgumentParser(description="Train Emotion Classifier")

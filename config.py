@@ -51,7 +51,7 @@ RUN2_CONFIG = {**BASELINE_RUN_CONFIG, "name": "lr-tuning",   "learning_rate": 3e
 RUN3_CONFIG = {**RUN2_CONFIG,         "name": "bigger-lstm",  "lstm_units": 256, "epochs": 30}
 RUN4_CONFIG = {**RUN3_CONFIG,         "name": "regularized",  "dropout": 0.5, "epochs": 30}
 
-ABLATION_HIGH_CAPACITY = {
+RUN5_CONFIG = {
     "name": "ablation-high-capacity-regularized",
     "epochs": 25,
     "learning_rate": 3e-4,          # Slightly more conservative for big layers
@@ -64,4 +64,19 @@ ABLATION_HIGH_CAPACITY = {
     "max_len": 64,
     "num_classes"   : 6,       # ← added
     "vocab_size"    : 30522,
+}
+
+RUN6_CONFIG = {
+    "name": "ablation-optimized-context",
+    "epochs": 20,
+    "learning_rate": 1e-3,          # Snappy learning rate for a tighter model
+    "lstm_units": 256,              # Cut capacity in half to stop memorization
+    "num_layers": 2,                # Drop down to 2 layers
+    "embed_dim": 128,
+    "fc_hidden_dim": 64,
+    "dropout": 0.25,
+    "batch_size": 32,
+    "max_len": 45,     
+    "num_classes"   : 6,       # ← added
+    "vocab_size"    : 30522,             # <-- Strip away the empty padding zero-space
 }
