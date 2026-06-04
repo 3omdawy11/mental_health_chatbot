@@ -11,6 +11,6 @@ train_df, val_df, test_df = load_data()
 tokenizer = load_tokenizer()
 _, _, test_loader = get_dataloaders(train_df, val_df, test_df, tokenizer, BASELINE_RUN_CONFIG)
 
-model = EmotionClassifier(BASELINE_RUN_CONFIG).to(device)
+model = EmotionClassifier()
 
 test_acc, preds, labels = evaluate(model, test_loader, device)

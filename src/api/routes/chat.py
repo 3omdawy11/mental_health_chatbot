@@ -248,7 +248,31 @@ async def process_chat_message(
     # ── Step 1: Language detection ─────────────────────────────────────────
     lang_result   = lang_detector.detect(user_text)
     detected_lang = lang_result.get("language", "en")
-    language_name = lang_result.get("language_name", "English")
+    # language_name = lang_result.get("language_name", "English")
+    # map detected_lang to a human-readable name (fallback to code if name not available)
+    language_map = {
+        'ar': 'Arabic',
+        'bg': 'Bulgarian',
+        'de': 'German',
+        'el': 'Greek',
+        'en': 'English',
+        'es': 'Spanish',
+        'fr': 'French',
+        'hi': 'Hindi',
+        'it': 'Italian',
+        'ja': 'Japanese',
+        'nl': 'Dutch',
+        'pl': 'Polish',
+        'pt': 'Portuguese',
+        'ru': 'Russian',
+        'sw': 'Swahili',
+        'th': 'Thai',
+        'tr': 'Turkish',
+        'ur': 'Urdu',
+        'vi': 'Vietnamese',
+        'zh': 'Chinese'
+    }
+    language_name = language_map.get(detected_lang, "Unknown")
 
     # ── Step 2: Translate to English ───────────────────────────────────────
     print(f"User message: '{user_text}' | Detected language: {detected_lang} ({language_name})")

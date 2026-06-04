@@ -50,6 +50,14 @@ IMPORTANT RULES:
   greeting, goodbye, gratitude, asking_mental_health_question, out_of_scope
 """
 
+VALID_INTENTS = {
+    "greeting",
+    "goodbye",
+    "gratitude",
+    "asking_mental_health_question",
+    "out_of_scope"
+}
+
 class IntentClassifier:
     """
     Inference wrapper for Groq-powered LLM Intent Classification.

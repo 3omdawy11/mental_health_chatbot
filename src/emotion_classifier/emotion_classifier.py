@@ -600,16 +600,16 @@ class EmotionClassifier:
         # ── 1. EXTRACT NESTED VALUES AND ENFORCE SCALAR TYPES ────────────────
         config_data = {
             "embed_dim":     int(get_val("embed_dim", 128)),
-            "lstm_units":    int(get_val("lstm_units", 128)),
+            "lstm_units":    int(get_val("lstm_units", 256)),
             "num_layers":    int(get_val("num_layers", 2)),       # Defaulting to 2 layers
-            "dropout":       float(get_val("dropout", 0.4)),
+            "dropout":       float(get_val("dropout", 0.25)),
             "fc_hidden_dim": int(get_val("fc_hidden_dim", 64)),   # Defaulting to 64 hidden units
             "num_classes":   int(get_val("num_classes", 6)),      # 6 core target emotions
             "vocab_size":    int(get_val("vocab_size", 30522)),   # bert-base-uncased matrix limit
         }
         
         # Capture maximum token length constraint for tensor sizing (fallback to 50)
-        self._max_len = int(get_val("max_len", 50))
+        self._max_len = int(get_val("max_len", 45))
         # ──────────────────────────────────────────────────────────────────────
 
         print(f"📥 Initializing Tokenizer (bert-base-uncased)...")

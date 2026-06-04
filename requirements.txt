@@ -13,6 +13,7 @@ datasets
 pandas
 numpy
 scikit-learn
+ipykernel
 
 # NLP & Text Processing
 docling
@@ -41,3 +42,5 @@ pydantic
 
 qdrant-client
 pyyaml
+
+langid

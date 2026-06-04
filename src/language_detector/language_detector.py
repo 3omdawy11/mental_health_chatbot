@@ -53,7 +53,7 @@ CONFIDENCE_THRESHOLD: float = 0.55
 # How many top candidates to consider when doing the priority fallback.
 # E.g. 5 means "look at the 5 most-probable languages and pick the most
 # globally-common one among them".
-FALLBACK_TOP_K: int = 5
+FALLBACK_TOP_K: int = 10
 
 # ── Short-text ensemble toggle ───────────────────────────────────────────────
 # Set to True  → use langid for texts shorter than SHORT_TEXT_THRESHOLD chars.
@@ -63,7 +63,7 @@ USE_SHORT_TEXT_ENSEMBLE: bool = True   # ← flip to True to enable
 
 # Texts strictly shorter than this character count are routed to the ensemble
 # detector when USE_SHORT_TEXT_ENSEMBLE is True.
-SHORT_TEXT_THRESHOLD: int = 20
+SHORT_TEXT_THRESHOLD: int = 30
 
 # ─────────────────────────────────────────────────────────────────────────────
 # ❷  LANGUAGE PRIORITY LIST
@@ -99,7 +99,7 @@ LANGUAGE_PRIORITY: list[str] = [
 # ─────────────────────────────────────────────────────────────────────────────
 # ❸  Paths (mirrors the training script layout)
 # ─────────────────────────────────────────────────────────────────────────────
-_ROOT = Path(__file__).resolve().parent.parent
+_ROOT = Path(__file__).resolve().parent.parent.parent
 
 if "/kaggle" in str(Path.cwd()):
     _MODEL_DIR = Path("/kaggle/working/models/language_detection")
@@ -249,13 +249,14 @@ class LanguageDetector:
         top_conf = float(proba.max())
         top_idx  = int(proba.argmax())
         top_lang = self.model.classes_[top_idx]
-
+        all_scores = {lang: float(prob) for lang, prob in zip(self.model.classes_, proba)}
         # ── High confidence: accept as-is ──────────────────────────────────
         if top_conf >= self.confidence_threshold:
             return {
                 "language":   top_lang,
                 "confidence": top_conf,
                 "method":     "tfidf_lr",
+                "all_scores": all_scores,  # ← NEW: include full score dict for debugging/analysis
             }
 
         # ── Low confidence: priority fallback ──────────────────────────────
@@ -281,6 +282,7 @@ class LanguageDetector:
                 "language":   best_lang,
                 "confidence": best_confidence,
                 "method":     "tfidf_lr_priority_fallback",
+                "all_scores": all_scores,  # ← NEW: include full score dict for debugging/analysis
             }
 
         # ── Last resort: return the raw top prediction ─────────────────────
@@ -288,6 +290,7 @@ class LanguageDetector:
             "language":   top_lang,
             "confidence": top_conf,
             "method":     "tfidf_lr_raw_fallback",
+            "all_scores": all_scores,  # ← NEW: include full score dict for debugging/analysis
         }
 
     def _detect_with_ensemble(self, text: str) -> dict[str, Any]:
@@ -309,6 +312,7 @@ class LanguageDetector:
                 "language":   lang_code,
                 "confidence": confidence,
                 "method":     "langid_ensemble",
+                "all_scores": None,  # ← NEW: include full score dict for debugging/analysis
             }
 
         # langid predicted a language our model doesn't know → fall back
