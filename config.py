@@ -62,4 +62,6 @@ ABLATION_HIGH_CAPACITY = {
     "dropout": 0.35,                # <-- Forced regularization defense
     "batch_size": 64,               # Stable gradient steps
     "max_len": 64,
+    "num_classes"   : 6,       # ← added
+    "vocab_size"    : 30522,
 }
