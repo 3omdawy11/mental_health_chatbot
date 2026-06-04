@@ -45,9 +45,6 @@ from typing import Any
 import numpy as np
 
 # ─────────────────────────────────────────────────────────────────────────────
-# ❶  TUNEABLE KNOBS  ← edit these to adjust behaviour
-# ─────────────────────────────────────────────────────────────────────────────
-
 # Minimum confidence for the model's top prediction to be accepted as-is.
 # Below this value the priority-fallback logic kicks in.
 # Range 0–1.  Good starting point: 0.50–0.65.
@@ -62,7 +59,7 @@ FALLBACK_TOP_K: int = 5
 # Set to True  → use langid for texts shorter than SHORT_TEXT_THRESHOLD chars.
 # Set to False → always use our TF-IDF/LR model (+ thresholding above).
 # Can also be overridden at runtime via env-var: LANG_DETECTOR_ENSEMBLE=0 / 1
-USE_SHORT_TEXT_ENSEMBLE: bool = False   # ← flip to True to enable
+USE_SHORT_TEXT_ENSEMBLE: bool = True   # ← flip to True to enable
 
 # Texts strictly shorter than this character count are routed to the ensemble
 # detector when USE_SHORT_TEXT_ENSEMBLE is True.
