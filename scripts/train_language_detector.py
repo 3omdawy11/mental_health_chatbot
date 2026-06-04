@@ -38,20 +38,35 @@ from sklearn.metrics import (
 
 # ── Paths ────────────────────────────────────────────────────────────────────
 # ── Detect environment ────────────────────────────────────────────────────────
-IN_KAGGLE = "/kaggle" in str(Path.cwd())
+#
+# Kaggle has two zones:
+#   /kaggle/input  — read-only  → where datasets (splits) live
+#   /kaggle/working — writable  → where we write models, logs, artefacts
+#
+# We detect Kaggle by checking for the canonical dataset path; if it exists
+# we use it, otherwise we fall back to the local project layout.
+# ─────────────────────────────────────────────────────────────────────────────
 
-try:
-    # Kaggle environment
-    DATA_SPLITS = Path("/kaggle/working/data/splits")
+_KAGGLE_INPUT_SPLITS = Path(
+    "/kaggle/input/datasets/ziadmahmoudamr/mental-health-chatbot"
+    "/mental_health_chatbot/data/splits"
+)
+
+IN_KAGGLE = _KAGGLE_INPUT_SPLITS.exists()
+
+if IN_KAGGLE:
+    # READ  → /kaggle/input  (read-only dataset)
+    DATA_SPLITS = _KAGGLE_INPUT_SPLITS
+    # WRITE → /kaggle/working  (writable scratch space)
     MODEL_DIR   = Path("/kaggle/working/models/language_detection")
     LOGS        = Path("/kaggle/working/logs")
-except:
-    # Local environment fallback
+else:
+    # Local project layout
     DATA_SPLITS = ROOT / "data" / "splits"
     MODEL_DIR   = ROOT / "models" / "language_detection"
     LOGS        = ROOT / "logs"
 
-# Create directories (except /kaggle/input which is read-only)
+# Only create writable directories (never touch /kaggle/input)
 for d in [MODEL_DIR, LOGS]:
     d.mkdir(parents=True, exist_ok=True)
 
@@ -95,11 +110,12 @@ LANGUAGE_PRIORITY = [
 
 def load_splits() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     print("\n[1/6] Loading splits …")
-    train = pd.read_csv(DATA_SPLITS / "language_train.csv")
-    val   = pd.read_csv(DATA_SPLITS / "language_val.csv")
-    test  = pd.read_csv(DATA_SPLITS / "language_test.csv")
+    print(f"  Reading from: {DATA_SPLITS}")
+    train = pd.read_csv(DATA_SPLITS / "train" / "language_train.csv")
+    val   = pd.read_csv(DATA_SPLITS / "val"   / "language_val.csv")
+    test  = pd.read_csv(DATA_SPLITS / "test"  / "language_test.csv")
     print(f"  train={len(train):,}  val={len(val):,}  test={len(test):,}")
-    print(f"  Languages: {sorted(train['language'].unique())}")
+    print(f"  Languages: {sorted(train['labels'].unique())}")
     return train, val, test
 
 
@@ -318,7 +334,7 @@ def main():
     X_val   = vec.transform(val["text"])
     X_test  = vec.transform(test["text"])
 
-    y_train, y_val, y_test = train["language"], val["language"], test["language"]
+    y_train, y_val, y_test = train["labels"], val["labels"], test["labels"]
 
     # 3. Grid search C
     best_C = grid_search_C(X_train, y_train, X_val, y_val)
@@ -330,7 +346,7 @@ def main():
     clf  = train_final(X_tv, y_tv, best_C)
 
     # 5. Evaluate
-    labels = sorted(train["language"].unique().tolist())
+    labels = sorted(train["labels"].unique().tolist())
     eval_results = evaluate(clf, vec, X_test, y_test, labels)
 
     # Feature inspection
@@ -351,6 +367,14 @@ def main():
         ("Ich fühle mich heute nicht gut.", "de"),
         ("今日は気分が優れません。", "ja"),
         ("أنا لست بخير اليوم.", "ar"),
+        ("hey", "en"),
+        ("hi", "en"),
+        ("hello", "en"),
+        ("3amel eh yasta", "en"),
+        ("الو", "ar"),
+
+
+
     ]
     all_ok = True
     for text, expected in test_cases:
