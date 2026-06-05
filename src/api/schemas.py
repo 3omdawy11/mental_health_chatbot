@@ -1,13 +1,8 @@
-# src/api/schemas.py
-
 from pydantic import BaseModel, Field
 from typing import Optional, List
 
 class ChatRequest(BaseModel):
-    message: str = Field(..., min_length=1, max_length=2000,
-                         example="I feel very anxious lately")
-
-# ── Nested metadata models ────────────────────────────────────────────────────
+    message: str = Field(..., min_length=1, max_length=2000, example="I feel very anxious lately")
 
 class Source(BaseModel):
     chunk_text : str
@@ -34,8 +29,6 @@ class ChatMetadata(BaseModel):
     sources             : List[Source]
     is_crisis           : bool
     context_accumulated : ContextAccumulated
-
-# ── Main response ─────────────────────────────────────────────────────────────
 
 class ChatResponse(BaseModel):
     response : str

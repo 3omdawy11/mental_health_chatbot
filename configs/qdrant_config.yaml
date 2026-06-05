@@ -1,35 +1,31 @@
 connection:
-  # Values read at runtime from environment variables (see .env)
   url_env_var:     "QDRANT_URL"
   api_key_env_var: "QDRANT_API_KEY"
-  timeout:         30       # seconds per request
-  # Local in-memory fallback (used when QDRANT_URL is not set)
+  timeout:         30
   local_path:      "data/qdrant_local"
 
 collection:
   name:            "mental_health"
   vector_size:     384           # all-MiniLM-L6-v2 output dim
-  distance:        "Cosine"      # COSINE distance for normalised embeddings
-
+  distance:        "Cosine" 
 hnsw:
-  m:               16            # bi-directional links per node
-                                 # higher → better recall, more memory
-  ef_construct:    200           # build-time candidates — trade-off quality/speed
-  full_scan_threshold: 10000     # switch to full scan for small collections
+  m:               16
+  ef_construct:    200       
+  full_scan_threshold: 10000   
 
 search:
-  ef:              200           # runtime search candidates (≥ limit recommended * 10)
-  default_limit:   5             # top-k results returned
-  score_threshold: 0.45          # minimum cosine similarity to return a result
+  ef:              200      
+  default_limit:   5          
+  score_threshold: 0.45        
   with_payload:    true
-  with_vectors:    false         # don't return raw vectors (saves bandwidth)
+  with_vectors:    false
 
 indexing:
-  batch_size:      64            # chunks per upload batch
-  parallel:        1             # upload parallelism (1 = sequential, safe)
-  wait:            true          # wait for indexing to finish before returning
+  batch_size:      64   
+  parallel:        1    
+  wait:            true
 
-payload_fields:                  # fields stored alongside each vector
+payload_fields:              
   - text
   - source
   - source_type

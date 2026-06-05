@@ -1,7 +1,4 @@
-# scripts/test_intent_classifier.py
-
-
-from src.intent_classifier import classify_intent
+from src.intent_classifier import IntentClassifier
 
 test_messages = [
     "Hey, how are you?",
@@ -9,13 +6,13 @@ test_messages = [
     "Thank you so much for your help",
     "Bye, take care",
     "What's the best pizza place near me?",
-    "I can't sleep and feel hopeless",    # edge case
-    "I'm not okay",                        # edge case
-    "Thanks, goodbye!",                    # mixed intent
+    "I can't sleep and feel hopeless",
+    "I'm not okay",            
+    "Thanks, goodbye!",   
 ]
 
 print(f"{'Message':<45} {'Intent'}")
 print("-" * 70)
 for msg in test_messages:
-    intent = classify_intent(msg)
+    intent = IntentClassifier().predict(msg)
     print(f"{msg:<45} {intent}")

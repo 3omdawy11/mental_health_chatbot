@@ -1,8 +1,6 @@
 """
 Train TF-IDF + Logistic Regression language detector.
 
-Steps
------
 1. Load train / val / test splits
 2. Fit TF-IDF vectoriser on train
 3. Grid-search over C values using validation set
@@ -10,9 +8,6 @@ Steps
 5. Evaluate on test set (accuracy, per-class F1, confusion matrix)
 6. Save vectorizer.pkl, model.pkl
 7. Print full summary
-
-Run from project root:
-    python scripts/01_train_language_detector.py
 """
 
 import sys, time, pickle, json
@@ -25,7 +20,7 @@ import numpy as np
 import pandas as pd
 import yaml
 import matplotlib
-matplotlib.use("Agg")          # headless — saves PNG, no display needed
+matplotlib.use("Agg")  # save plots without display
 import matplotlib.pyplot as plt
 import seaborn as sns
 
@@ -36,17 +31,6 @@ from sklearn.metrics import (
     confusion_matrix, ConfusionMatrixDisplay,
 )
 
-# ── Paths ────────────────────────────────────────────────────────────────────
-# ── Detect environment ────────────────────────────────────────────────────────
-#
-# Kaggle has two zones:
-#   /kaggle/input  — read-only  → where datasets (splits) live
-#   /kaggle/working — writable  → where we write models, logs, artefacts
-#
-# We detect Kaggle by checking for the canonical dataset path; if it exists
-# we use it, otherwise we fall back to the local project layout.
-# ─────────────────────────────────────────────────────────────────────────────
-
 _KAGGLE_INPUT_SPLITS = Path(
     "/kaggle/input/datasets/ziadmahmoudamr/mental-health-chatbot"
     "/mental_health_chatbot/data/splits"
@@ -55,29 +39,24 @@ _KAGGLE_INPUT_SPLITS = Path(
 IN_KAGGLE = _KAGGLE_INPUT_SPLITS.exists()
 
 if IN_KAGGLE:
-    # READ  → /kaggle/input  (read-only dataset)
     DATA_SPLITS = _KAGGLE_INPUT_SPLITS
-    # WRITE → /kaggle/working  (writable scratch space)
     MODEL_DIR   = Path("/kaggle/working/models/language_detection")
     LOGS        = Path("/kaggle/working/logs")
 else:
-    # Local project layout
     DATA_SPLITS = ROOT / "data" / "splits"
     MODEL_DIR   = ROOT / "models" / "language_detection"
     LOGS        = ROOT / "logs"
 
-# Only create writable directories (never touch /kaggle/input)
 for d in [MODEL_DIR, LOGS]:
     d.mkdir(parents=True, exist_ok=True)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Language priority list for low-confidence fallback
+# I've decided to make a pipeline for predicting the language
 #
 # When the model is uncertain (confidence < threshold), we scan the top-N
 # predicted languages and return the highest-priority one that appears there.
 # Order reflects approximate global speaker population / web prevalence.
-# Edit freely — only languages your model actually knows matter here.
 # ─────────────────────────────────────────────────────────────────────────────
 LANGUAGE_PRIORITY = [
     "en",   # English        ~1.5 B speakers
@@ -104,11 +83,9 @@ LANGUAGE_PRIORITY = [
 ]
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1.  Load data
-# ─────────────────────────────────────────────────────────────────────────────
+#Load data
 
-def load_splits() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_splits():
     print("\n[1/6] Loading splits …")
     print(f"  Reading from: {DATA_SPLITS}")
     train = pd.read_csv(DATA_SPLITS / "train" / "language_train.csv")
@@ -119,16 +96,14 @@ def load_splits() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     return train, val, test
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 2.  Vectoriser
-# ─────────────────────────────────────────────────────────────────────────────
+# vectorizer
 
-def build_vectorizer(train_texts: pd.Series) -> TfidfVectorizer:
+def build_vectorizer(train_texts: pd.Series):
     print("\n[2/6] Fitting TF-IDF vectoriser …")
     vec = TfidfVectorizer(
         max_features=50_000,
         ngram_range=(2, 6),      # char n-grams 2-6
-        analyzer="char_wb",      # character-level, word boundaries added
+        analyzer="char_wb",      # character-level
         min_df=2,
         max_df=0.95,
         sublinear_tf=True,
@@ -139,14 +114,12 @@ def build_vectorizer(train_texts: pd.Series) -> TfidfVectorizer:
     print(f"  Fit time        : {time.time()-t0:.1f}s")
     return vec
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 3.  Grid search over C
-# ─────────────────────────────────────────────────────────────────────────────
+# Grid search over C
 
 def grid_search_C(
     X_train, y_train, X_val, y_val,
     C_values: list[float] | None = None,
-) -> float:
+):
     print("\n[3/6] Grid-searching regularisation C on validation set …")
     if C_values is None:
         C_values = [0.1, 0.5, 1.0, 5.0, 10.0]
@@ -165,15 +138,13 @@ def grid_search_C(
         print(f"  C={C:<5}  val_acc={acc:.4f}  ({elapsed:.1f}s)")
 
     best_C, best_acc, _ = max(results, key=lambda x: x[1])
-    print(f"\n  ✓ Best C={best_C}  val_accuracy={best_acc:.4f}")
+    print(f"\n  ok Best C={best_C}  val_accuracy={best_acc:.4f}")
     return best_C
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 4.  Train final model on train + val
-# ─────────────────────────────────────────────────────────────────────────────
+# Train final model on train + val
 
-def train_final(X_trainval, y_trainval, best_C: float) -> LogisticRegression:
+def train_final(X_trainval, y_trainval, best_C: float):
     print(f"\n[4/6] Training final model (C={best_C}) on train+val …")
     clf = LogisticRegression(
         C=best_C, max_iter=1000, solver="lbfgs",
@@ -185,11 +156,9 @@ def train_final(X_trainval, y_trainval, best_C: float) -> LogisticRegression:
     return clf
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 5.  Evaluation
-# ─────────────────────────────────────────────────────────────────────────────
+# Evaluation
 
-def evaluate(clf, vec, X_test, y_test, labels: list[str]) -> dict:
+def evaluate(clf, vec, X_test, y_test, labels: list[str]):
     print("\n[5/6] Evaluating on test set …")
     y_pred = clf.predict(X_test)
     acc = accuracy_score(y_test, y_pred)
@@ -199,12 +168,10 @@ def evaluate(clf, vec, X_test, y_test, labels: list[str]) -> dict:
     print(f"\n  Overall accuracy : {acc:.4f}  ({acc*100:.2f}%)")
     print("\n" + report_str)
 
-    # Log to file
     with open(LOGS / "model_performance.log", "a") as f:
         f.write(f"\n{'='*60}\nLanguage Detector — Test Evaluation\n")
         f.write(f"Accuracy: {acc:.4f}\n\n{report_str}\n")
 
-    # ── Confusion matrix PNG ──────────────────────────────────────────────────
     cm = confusion_matrix(y_test, y_pred, labels=labels)
     fig, ax = plt.subplots(figsize=(14, 12))
     sns.heatmap(
@@ -221,7 +188,6 @@ def evaluate(clf, vec, X_test, y_test, labels: list[str]) -> dict:
     plt.close(fig)
     print(f"\n  Confusion matrix saved → {cm_path}")
 
-    # ── Per-language bar chart ────────────────────────────────────────────────
     per_lang = {
         lang: {
             "precision": report[lang]["precision"],
@@ -233,7 +199,6 @@ def evaluate(clf, vec, X_test, y_test, labels: list[str]) -> dict:
     }
     _plot_per_language(per_lang, MODEL_DIR / "per_language_metrics.png")
 
-    # ── Hardest languages ─────────────────────────────────────────────────────
     sorted_langs = sorted(per_lang.items(), key=lambda x: x[1]["f1-score"])
     print("\n  5 hardest languages (lowest F1):")
     for lang, m in sorted_langs[:5]:
@@ -242,7 +207,7 @@ def evaluate(clf, vec, X_test, y_test, labels: list[str]) -> dict:
     return {"accuracy": acc, "per_language": per_lang, "report": report}
 
 
-def _plot_per_language(per_lang: dict, save_path: Path) -> None:
+def _plot_per_language(per_lang: dict, save_path: Path) :
     langs = list(per_lang.keys())
     f1s   = [per_lang[l]["f1-score"]  for l in langs]
     precs = [per_lang[l]["precision"] for l in langs]
@@ -268,8 +233,7 @@ def _plot_per_language(per_lang: dict, save_path: Path) -> None:
 
 
 def top_features_per_language(vec: TfidfVectorizer, clf: LogisticRegression,
-                               n: int = 15) -> None:
-    """Print top TF-IDF features for each language class."""
+                               n: int = 15):
     print("\n  Top features per language (char n-grams):")
     feature_names = np.array(vec.get_feature_names_out())
     for i, lang in enumerate(clf.classes_):
@@ -278,12 +242,8 @@ def top_features_per_language(vec: TfidfVectorizer, clf: LogisticRegression,
         print(f"  {lang}: {', '.join(repr(f) for f in top_feats[:8])}")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 6.  Save model
-# ─────────────────────────────────────────────────────────────────────────────
-
 def save_model(vec: TfidfVectorizer, clf: LogisticRegression,
-               eval_results: dict, best_C: float) -> None:
+               eval_results: dict, best_C: float):
     print("\n[6/6] Saving model artefacts …")
 
     with open(MODEL_DIR / "vectorizer.pkl", "wb") as f:
@@ -291,7 +251,6 @@ def save_model(vec: TfidfVectorizer, clf: LogisticRegression,
     with open(MODEL_DIR / "model.pkl", "wb") as f:
         pickle.dump(clf, f)
 
-    # Update config.yaml with training outcomes
     cfg_path = MODEL_DIR / "config.yaml"
     if cfg_path.exists():
         with open(cfg_path) as f:
@@ -299,7 +258,6 @@ def save_model(vec: TfidfVectorizer, clf: LogisticRegression,
     else:
         cfg = {}
 
-    # Ensure nested dictionaries exist
     if "model" not in cfg:
         cfg["model"] = {}
     if "training" not in cfg:
@@ -316,19 +274,14 @@ def save_model(vec: TfidfVectorizer, clf: LogisticRegression,
     print(f"  model.pkl      → {MODEL_DIR / 'model.pkl'}")
     print(f"  config.yaml    → {cfg_path}")
 
-# ─────────────────────────────────────────────────────────────────────────────
-# MAIN
-# ─────────────────────────────────────────────────────────────────────────────
 
 def main():
     print("=" * 60)
     print(" language Detection Model Training")
     print("=" * 60)
 
-    # 1. Load
     train, val, test = load_splits()
 
-    # 2. Vectoriser (fit on train only)
     vec = build_vectorizer(train["text"])
     X_train = vec.transform(train["text"])
     X_val   = vec.transform(val["text"])
@@ -336,29 +289,20 @@ def main():
 
     y_train, y_val, y_test = train["labels"], val["labels"], test["labels"]
 
-    # 3. Grid search C
     best_C = grid_search_C(X_train, y_train, X_val, y_val)
 
-    # 4. Retrain on train+val
     import scipy.sparse as sp
     X_tv = sp.vstack([X_train, X_val])
     y_tv = pd.concat([y_train, y_val], ignore_index=True)
     clf  = train_final(X_tv, y_tv, best_C)
 
-    # 5. Evaluate
     labels = sorted(train["labels"].unique().tolist())
     eval_results = evaluate(clf, vec, X_test, y_test, labels)
 
-    # Feature inspection
     top_features_per_language(vec, clf, n=15)
 
-    # 6. Save
     save_model(vec, clf, eval_results, best_C)
 
-    # ── Smoke-test the wrapper class ─────────────────────────────────────────
-    print("\n" + "=" * 60)
-    print("  Wrapper class smoke test")
-    print("=" * 60)
     from src.language_detector import LanguageDetector
     detector = LanguageDetector()
     test_cases = [
@@ -381,13 +325,13 @@ def main():
         result = detector.detect(text)
         ok = result["language"] == expected
         all_ok = all_ok and ok
-        status = "✓" if ok else "✗"
+        status = "ok" if ok else "✗"
         print(f"  {status}  [{expected}→{result['language']}]  conf={result['confidence']:.3f}  {text[:45]}")
 
-    print(f"\n  Smoke test: {'PASSED ✅' if all_ok else 'FAILED ❌'}")
+    print(f"\n  test: {'PASSED Ok' if all_ok else 'FAILED **'}")
 
     print("\n" + "=" * 60)
-    print("  ✅  Phase 2 Complete")
+    print("  Ok  Phase 2 Complete")
     print(f"  Test accuracy : {eval_results['accuracy']*100:.2f}%")
     print("=" * 60)
 

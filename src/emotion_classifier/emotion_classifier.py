@@ -338,7 +338,7 @@
 #                 best_val_f1   = val_f1
 #                 patience_left = self.patience
 #                 self._save_checkpoint("best")
-#                 marker = "  ← best ✓"
+#                 marker = "  ← best ok"
 #             else:
 #                 patience_left -= 1
 
@@ -634,7 +634,7 @@ class EmotionClassifier:
         self._model.eval()
 
         self._loaded = True
-        print("✅ BiLSTM Emotion Classifier state weights successfully mapped and loaded!")
+        print("Ok BiLSTM Emotion Classifier state weights successfully mapped and loaded!")
 
     def predict(self, text: str) -> dict:
         """Alias to keep consistent with the FastAPI endpoint expectations."""

@@ -86,7 +86,7 @@ def evaluate_test(test: pd.DataFrame) -> dict:
     print(f"\n  Test accuracy   : {acc:.4f}  ({acc*100:.2f}%)")
     print(f"  Test macro-F1   : {f1:.4f}")
     print(f"  Inference speed : {elapsed/len(test)*1000:.1f} ms/sample  "
-          f"(< 1000 ms target {'✓' if elapsed/len(test)*1000 < 1000 else '✗'})")
+          f"(< 1000 ms target {'ok' if elapsed/len(test)*1000 < 1000 else '✗'})")
     print(f"\n{report}")
 
     # Confusion matrix
@@ -157,7 +157,7 @@ def parse_args():
 def main():
     args = parse_args()
     print("=" * 60)
-    print("  Phase 3 — Emotion Classifier (DistilBERT)")
+    print("  Emotion Classifier (DistilBERT)")
     print("=" * 60)
 
     train, val, test = load_splits()
@@ -204,13 +204,12 @@ def main():
         ms  = (time.time() - t0) * 1000
         ok  = res["emotion"] == expected
         all_ok = all_ok and ok
-        mark = "✓" if ok else "✗"
+        mark = "ok" if ok else "✗"
         print(f"  {mark} [{expected:<8}→{res['emotion']:<8}]  "
               f"conf={res['confidence']:.3f}  {ms:.0f}ms  {text[:42]}")
 
-    print(f"\n  Smoke test: {'PASSED ✅' if all_ok else 'PARTIAL — see above'}")
+    print(f"\n  test: {'PASSED' if all_ok else 'PARTIAL — see above'}")
     print("\n" + "=" * 60)
-    print("  ✅  Phase 3 Complete")
     print(f"  Test accuracy : {eval_results['accuracy']*100:.2f}%")
     print(f"  Test macro-F1 : {eval_results['macro_f1']:.4f}")
     print("=" * 60)

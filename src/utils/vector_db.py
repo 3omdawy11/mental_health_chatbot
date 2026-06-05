@@ -79,9 +79,8 @@ class VectorDBManager:
         self._col_name   = collection_name or self._cfg["collection"]["name"]
         self._url        = url     or os.getenv(self._cfg["connection"]["url_env_var"],     "")
         self._api_key    = api_key or os.getenv(self._cfg["connection"]["api_key_env_var"], "")
-        self._client     = None   # lazy init
+        self._client     = None 
 
-    # ── Client (lazy, cached) ─────────────────────────────────────────────────
 
     def _get_client(self):
         if self._client is not None:

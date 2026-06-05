@@ -88,9 +88,6 @@ def _extract_suggestions(text: str) -> list[str]:
     return [kw for kw in _SUGGESTION_KEYWORDS if kw in lower]
 
 
-# ── Singletons ─────────────────────────────────────────────────────────────────
-# One shared instance per process — keeps conversation history and
-# avoids re-loading heavy components on every request.
 
 @lru_cache(maxsize=1)
 def get_safety_checker() -> SafetyChecker:
@@ -107,7 +104,6 @@ def get_vector_db() -> VectorDBManager:
     return VectorDBManager(url=os.getenv("QDRANT_URL"))
 
 
-# ── Retrieval helper ──────────────────────────────────────────────────────────
 
 async def _retrieve_chunks(
     query: str,
@@ -133,7 +129,6 @@ async def _retrieve_chunks(
         return []
 
 
-# ── LLM response generation ───────────────────────────────────────────────────
 
 async def _generate_llm_response(
     user_message: str,
@@ -224,7 +219,6 @@ async def _generate_llm_response(
     return "I'm here to support you. Please consider speaking with a mental health professional."
 
 
-# ── Route ─────────────────────────────────────────────────────────────────────
 
 @router.post("/chat", response_model=ChatResponse)
 async def process_chat_message(
@@ -241,11 +235,9 @@ async def process_chat_message(
     if not user_text:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    # Singleton helpers (not injected to keep the signature clean)
     safety      = get_safety_checker()
     conversation = get_conversation_manager()
 
-    # ── Step 1: Language detection ─────────────────────────────────────────
     lang_result   = lang_detector.detect(user_text)
     detected_lang = lang_result.get("language", "en")
     # language_name = lang_result.get("language_name", "English")
@@ -274,7 +266,6 @@ async def process_chat_message(
     }
     language_name = language_map.get(detected_lang, "Unknown")
 
-    # ── Step 2: Translate to English ───────────────────────────────────────
     print(f"User message: '{user_text}' | Detected language: {detected_lang} ({language_name})")
     translated = (
         translator.to_english(user_text, detected_lang)
@@ -285,7 +276,6 @@ async def process_chat_message(
     print("Translated message:", translated)
 
 
-    # ── Step 3: Emotion + Intent in parallel ───────────────────────────────
     try:
         emotion_result, intent_result = await asyncio.gather(
             asyncio.to_thread(emotion_classifier.predict, translated),
@@ -303,7 +293,6 @@ async def process_chat_message(
         or detected_intent in ["suicide", "self_harm", "crisis"]
     )
 
-    # ── Step 4: Safety check (enriches crisis detection) ──────────────────
     safety_result = safety.check(
         translated,
         emotion=emotion,
@@ -316,7 +305,6 @@ async def process_chat_message(
         or (safety_result["is_crisis"] and safety_result["severity"] == "high")  # regex tier 1 only
     )   
 
-    # ── Step 5: Crisis guardrail ───────────────────────────────────────────
     if is_crisis:
         deesc    = safety_result.get("deescalation_text", "")
         res_str  = safety.format_resources(safety_result.get("resources", []))
@@ -346,7 +334,6 @@ async def process_chat_message(
             response=crisis_reply,
         )
 
-    # ── Step 6: NER + Query optimisation (mental-health intents only) ──────
     ner_result            = None
     optimized_query       = None
     hypothetical_response = None
@@ -368,8 +355,6 @@ async def process_chat_message(
             optimized_query = translated
 
         # ── Step 7: HyDE — hypothetical counsellor response ───────────────
-        # Used as the semantic query to the vector DB so retrieval bridges
-        # colloquial user language to clinical KB language.
         try:
             hypothetical_response = await asyncio.to_thread(
                 embedder.generate_hypothetical,
@@ -378,7 +363,6 @@ async def process_chat_message(
         except Exception:
             hypothetical_response = None
 
-    # ── Step 8: RAG retrieval ──────────────────────────────────────────────
     sources: list[dict] = []
     if "mental_health" in detected_intent:
         # Prefer the hypothetical response as the retrieval query when available
@@ -386,7 +370,6 @@ async def process_chat_message(
         print(f"Will retrieve with query: '{retrieval_query}'")
         sources = await _retrieve_chunks(translated, retrieval_query, embedder)
 
-    # ── Step 9: LLM response generation ───────────────────────────────────
     if "mental_health" in detected_intent:
         session_context = conversation.get_context_for_prompt()
         print(f"Session context: {session_context}")
@@ -403,7 +386,6 @@ async def process_chat_message(
         # NER
         print(f"Generated LLM response: '{response}'")
 
-        # Append soft crisis resources if safety flagged a lower-severity signal
         print(f"Safety check result: {safety_result}", safety_result['is_crisis'])
         if safety_result["is_crisis"] and safety_result["severity"] in ("medium", "high"):
             response += safety.format_resources(safety_result.get("resources", []))
@@ -418,13 +400,12 @@ async def process_chat_message(
     elif detected_intent == "gratitude":
         response = "I'm really glad I could help. Please don't hesitate to reach out whenever you need support. Thanks to god."
 
-    else:  # out_of_scope, general, etc.
+    else: 
         response = (
             "I'm specifically here to support with mental health and emotional wellbeing topics. "
             "Is there anything on your mind emotionally or mentally that I can help with? "
         )
 
-    # ── Step 10: Update conversation state ────────────────────────────────
     suggestions = _extract_suggestions(response)
 
     conversation.add_turn(
@@ -441,7 +422,6 @@ async def process_chat_message(
         suggestions=suggestions,
     )
 
-    # ── Step 11: Translate response back if needed ────────────────────────
     if detected_lang != "en":
         response = translator.to_lang(response, detected_lang)
 
@@ -460,7 +440,7 @@ async def process_chat_message(
             confidence_scores = ConfidenceScores(
                 language = round(random.uniform(0.7, 1.0), 4),
                 emotion  = emotion_confidence,
-                intent   = round(random.uniform(0.7, 1.0), 4)  # placeholder since intent classifier doesn't return confidence
+                intent   = round(random.uniform(0.7, 1.0), 4)
             ),
 
             sources = [

@@ -20,3 +20,12 @@ def get_query_optimizer(request: Request):
 
 def get_embedder(request: Request):
     return request.app.state.embedder
+
+def get_safety_checker(request: Request):
+    return request.app.state.safety_checker
+
+def get_conversation_manager(request: Request):
+    return request.app.state.conversation_manager
+
+def get_vector_db_manager(request: Request):
+    return request.app.state.vector_db_manager

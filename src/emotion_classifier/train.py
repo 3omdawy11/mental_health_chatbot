@@ -186,7 +186,7 @@ def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFI
             wandb.run.summary['best_val_macro_f1'] = best_val_f1
             wandb.run.summary['best_epoch']        = epoch
 
-            print(f"   ✅ Best model saved (val_macro_f1: {best_val_f1:.4f})")
+            print(f"   Ok Best model saved (val_macro_f1: {best_val_f1:.4f})")
             patience_count = 0
         else:
             patience_count += 1

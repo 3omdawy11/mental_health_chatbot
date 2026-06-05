@@ -11,6 +11,9 @@ from src.emotion_classifier import EmotionClassifier
 from src.language_translator import Translator
 from src.ner_extractor import NERExtractor
 from src.utils import QueryOptimizer, Embedder
+from src.pipeline.safety_checks import SafetyChecker
+from src.utils.conversation_manager import ConversationManager
+from src.utils.vector_db import VectorDBManager
 
 from src.api.routes import chat, health
 
@@ -26,7 +29,10 @@ async def lifespan(app: FastAPI):
     app.state.ner_extractor      = NERExtractor()
     app.state.query_optimizer    = QueryOptimizer()
     app.state.embedder            = Embedder(groq_api_key=os.environ["GROQ_API_KEY"])
-    print("All models loaded ✓")
+    app.state.safety_checker       = SafetyChecker()
+    app.state.conversation_manager = ConversationManager()
+    app.state.vector_db_manager     = VectorDBManager(url=os.getenv("QDRANT_URL"), api_key=os.getenv("QDRANT_API_KEY"))
+    print("All models and vector database loaded ok")
 
     yield
 
@@ -38,6 +44,9 @@ async def lifespan(app: FastAPI):
     del app.state.ner_extractor
     del app.state.query_optimizer
     del app.state.embedder
+    del app.state.safety_checker
+    del app.state.conversation_manager
+    del app.state.vector_db_manager
 
 app = FastAPI(
     title="Mental Health Chatbot API",

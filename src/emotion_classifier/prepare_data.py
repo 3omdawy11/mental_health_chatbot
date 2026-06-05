@@ -72,7 +72,7 @@ def calculate_and_generate_balanced_data():
     checkpoint_path = EMOTION_SPLIT_PATH.format('synthetic_checkpoint')
     
     if not os.path.exists(raw_train_path):
-        raise FileNotFoundError(f"❌ Could not find raw training data at {raw_train_path}")
+        raise FileNotFoundError(f"** Could not find raw training data at {raw_train_path}")
         
     df = pd.read_csv(raw_train_path)
     class_counts = df['label'].value_counts()
@@ -104,7 +104,7 @@ def calculate_and_generate_balanced_data():
         shortfall = max_class_size - current_count - already_generated
         
         if shortfall <= 0:
-            print(f"✅ Class '{emotion_name}' is fully balanced (Original: {current_count}, Synthetic: {already_generated}).")
+            print(f"Ok Class '{emotion_name}' is fully balanced (Original: {current_count}, Synthetic: {already_generated}).")
             continue
             
         print(f"⚡ '{emotion_name}' needs {shortfall} more rows (Already generated: {already_generated}/{max_class_size - current_count}).")
@@ -154,7 +154,7 @@ def calculate_and_generate_balanced_data():
         print(f"📈 Dataset size updated from {len(df)} to {len(balanced_df)} rows.")
         print("=" * 60)
     else:
-        print("\n✅ Dataset was already completely balanced!")
+        print("\nOk Dataset was already completely balanced!")
 
 
 if __name__ == "__main__":

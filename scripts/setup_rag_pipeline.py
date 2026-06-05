@@ -1,24 +1,10 @@
 """
-scripts/setup_rag.py
-========================
-Phase 6: Index the knowledge base into Qdrant.
-
-Steps
------
-1. Load knowledge_base_combined.json  (Phase 1 output)
-2. Initialise Embedder (Phase 5)
+1. Load knowledge_base_combined.json
+2. Initialise Embedder
 3. Batch-embed all chunks
 4. Create Qdrant collection with HNSW
 5. Upload chunks + embeddings
 6. Verify count and run test queries
-
-Run from project root:
-    python scripts/setup_rag.py
-
-Flags:
-    --recreate    Delete and rebuild the collection from scratch
-    --limit N     Only index first N chunks (smoke test)
-    --no-verify   Skip test queries after indexing
 """
 
 import sys, argparse, json, time
@@ -35,14 +21,11 @@ from src.utils.embedder   import Embedder
 from src.utils.vector_db  import VectorDBManager
 
 KB_PATH = ROOT / "data" / "processed" / "knowledge_base_combined.json"
-# ─────────────────────────────────────────────────────────────────────────────
 
-def load_knowledge_base(limit: int | None = None) -> list[dict]:
+def load_knowledge_base(limit: int | None = None) :
     print(f"\n[1/5] Loading knowledge base from {KB_PATH.name} …")
     if not KB_PATH.exists():
-        print(f"  ⚠  {KB_PATH} not found.")
-        print("  Run  python scripts/00_prepare_data.py  first (Phase 1).")
-        print("  Using synthetic demo chunks for now.\n")
+        print(f"   {KB_PATH} not found.")
         return _demo_chunks()
 
     with open(KB_PATH, encoding="utf-8") as f:
@@ -51,7 +34,6 @@ def load_knowledge_base(limit: int | None = None) -> list[dict]:
     if limit:
         chunks = chunks[:limit]
 
-    # Stats
     sources: dict[str, int] = {}
     for c in chunks:
         meta = c.get("metadata", {}) or {}
@@ -66,7 +48,7 @@ def load_knowledge_base(limit: int | None = None) -> list[dict]:
     return chunks
 
 
-def _demo_chunks() -> list[dict]:
+def _demo_chunks():
     """20 representative chunks for smoke-testing without the KB file."""
     items = [
         ("Anxiety disorders involve persistent and excessive worry. CBT and medication are first-line treatments.",  "counseling", "Anxiety"),
@@ -102,10 +84,10 @@ def _demo_chunks() -> list[dict]:
         for i, (text, src, section) in enumerate(items)
     ]
 
-def get_meta(chunk: dict) -> dict:
+def get_meta(chunk: dict):
     return chunk.get("metadata", {}) or {}
 
-def build_retrieval_text(chunk: dict) -> str:
+def build_retrieval_text(chunk: dict) :
     meta = get_meta(chunk)
 
     section = meta.get("section", "") or chunk.get("section", "")
@@ -149,31 +131,30 @@ def embed_chunks(chunks: list[dict]):
     return vecs, emb
 
 
-def setup_collection(db: VectorDBManager, recreate: bool) -> None:
+def setup_collection(db: VectorDBManager, recreate: bool) :
     print(f"\n[3/5] Setting up Qdrant collection '{db.collection_name}' …")
     created = db.create_collection(recreate=recreate)
     if created:
-        print("  ✓ Collection created")
+        print("   Collection created")
     else:
-        print("  ✓ Collection already exists (use --recreate to rebuild)")
+        print("   Collection already exists (use --recreate to rebuild)")
     info = db.collection_info()
     if "error" not in info:
         print(f"  Points: {info.get('count', 0):,}  Status: {info.get('status','?')}")
 
 
-def index_and_verify(db: VectorDBManager, chunks: list[dict], vecs: np.ndarray) -> None:
+def index_and_verify(db: VectorDBManager, chunks: list[dict], vecs: np.ndarray) :
     print(f"\n[4/5] Indexing {len(chunks):,} chunks …")
     summary = db.index_chunks(chunks, vecs, show_progress=True)
     print(f"  Uploaded : {summary['uploaded']:,} / {summary['total']:,}")
     print(f"  Elapsed  : {summary['elapsed']}s  ({summary['rate']} chunks/s)")
 
-    # Verify
     count = db.verify_count()
     ok    = count >= len(chunks)
-    print(f"  Verified : {count:,} points in Qdrant  {'✓' if ok else '⚠ mismatch'}")
+    print(f"  Verified : {count:,} points in Qdrant  {'Ok' if ok else '** mismatch'}")
 
 
-def test_queries(db: VectorDBManager, emb: Embedder) -> None:
+def test_queries(db: VectorDBManager, emb: Embedder) :
     print(f"\n[5/5] Test queries …")
     queries = [
         ("I feel anxious about work",           0.0),
@@ -188,13 +169,11 @@ def test_queries(db: VectorDBManager, emb: Embedder) -> None:
         ms      = (time.time() - t0) * 1000
         ok      = len(results) > 0 and ms < 500
         all_ok  = all_ok and ok
-        mark    = "✓" if ok else "✗"
+        mark    = "Ok" if ok else "**"
         print(f"\n  {mark} [{ms:.0f}ms] \"{query}\"")
         for i, r in enumerate(results, 1):
             print(f"     {i}. score={r['score']:.3f}  [{r['source_type']}]  {r['text'][:65]}")
 
-
-# ─────────────────────────────────────────────────────────────────────────────
 
 def parse_args():
     p = argparse.ArgumentParser()
@@ -207,7 +186,7 @@ def parse_args():
 def main():
     args = parse_args()
     print("=" * 60)
-    print("  Phase 6 — Vector Database Setup")
+    print("  vector Database Setup")
     print("=" * 60)
 
     db = VectorDBManager()
@@ -223,7 +202,6 @@ def main():
 
     count = db.verify_count()
     print("\n" + "=" * 60)
-    print("  ✅  Phase 6 Complete")
     print(f"  Collection : {db.collection_name}")
     print(f"  Mode       : {'cloud' if db.is_cloud else 'local (set QDRANT_URL for cloud)'}")
     print(f"  Points     : {count:,}")

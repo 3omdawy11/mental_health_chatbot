@@ -151,7 +151,7 @@ def print_cleaning_stats(title: str, stats: dict) -> None:
     # Q&A specific stats
     dup_contexts = stats.get('duplicate_contexts_retained', 0)
     if dup_contexts > 0:
-        print(f"  ✓ Preserved diverse Q&A : {dup_contexts:,} questions")
+        print(f"  ok Preserved diverse Q&A : {dup_contexts:,} questions")
         print(f"    (with multiple valid answers)")
     
     final = stats.get('final_rows', stats.get('after_clean', 0))
