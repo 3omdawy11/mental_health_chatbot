@@ -1,22 +1,9 @@
 """
-src/utils/query_optimizer.py
-==============================
 Query rewriting/optimization for better RAG retrieval.
 
 Transforms informal user queries into terminology-rich search strings by:
   1. Asking Groq to rewrite (primary path)
   2. Expanding via a mental-health synonym dictionary (fallback)
-
-Usage
------
-    from src.utils.query_optimizer import QueryOptimizer
-    opt = QueryOptimizer()
-    result = opt.optimize("i feel anxious at work")
-    # {
-    #   "original":  "i feel anxious at work",
-    #   "optimized": "anxiety stress nervousness worry work workplace occupational stress",
-    #   "method":    "groq" | "synonym_expansion"
-    # }
 """
 
 from __future__ import annotations
@@ -28,7 +15,6 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# ── Synonym / expansion dictionary ───────────────────────────────────────────
 # Maps informal words → clinical + related terms for BM25/semantic enrichment
 _EXPANSIONS: dict[str, list[str]] = {
     "anxious":      ["anxiety", "nervousness", "worry", "apprehension", "fear"],
@@ -61,7 +47,6 @@ _EXPANSIONS: dict[str, list[str]] = {
     "motivation":   ["apathy", "anhedonia", "energy", "drive", "depression"],
 }
 
-# Filler words to strip before expansion
 _FILLERS = re.compile(
     r"\b(i|me|my|we|the|a|an|is|am|are|was|were|been|be|"
     r"feel|feeling|felt|have|has|had|do|does|did|can|"
@@ -107,15 +92,6 @@ Output:"""
 
 
 class QueryOptimizer:
-    """
-    Rewrites user queries for better mental health RAG retrieval.
-
-    Parameters
-    ----------
-    api_key : Groq API key (defaults to GROQ_API_KEY env var).
-    model   : Groq model (default: llama-3.3-70b-versatile — fast, good enough).
-    """
-
     def __init__(
         self,
         api_key: Optional[str] = None,
@@ -133,7 +109,6 @@ class QueryOptimizer:
             self._client = Groq(api_key=self._api_key, timeout=self._timeout)
         return self._client
 
-    # ── LLM rewriting ─────────────────────────────────────────────────────────
 
     def _rewrite_via_llm(self, text: str) -> str:
         prompt = _REWRITE_PROMPT.replace("{text}", text)
@@ -145,7 +120,6 @@ class QueryOptimizer:
         )
         return (resp.choices[0].message.content or "").strip()
 
-    # ── Synonym expansion fallback ────────────────────────────────────────────
 
     def _expand_via_synonyms(self, text: str) -> str:
         # Remove filler words
@@ -167,20 +141,8 @@ class QueryOptimizer:
                 seen.add(w); result.append(w)
         return " ".join(result)
 
-    # ── Public API ────────────────────────────────────────────────────────────
 
     def optimize(self, text: str) -> dict:
-        """
-        Optimize a query for RAG retrieval.
-
-        Returns
-        -------
-        {
-            "original":  str,   # unchanged input
-            "optimized": str,   # enriched query string
-            "method":    str    # "groq" | "synonym_expansion"
-        }
-        """
         if not isinstance(text, str) or not text.strip():
             return {"original": text, "optimized": text or "", "method": "passthrough"}
 

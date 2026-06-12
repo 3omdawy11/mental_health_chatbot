@@ -1,13 +1,8 @@
-"""
-Text preprocessing utilities for the mental health chatbot pipeline.
-"""
-
 import re
 import pandas as pd
 from typing import Optional
 
 
-# ── Core cleaning ────────────────────────────────────────────────────────────
 
 def remove_urls(text: str) -> str:
     """Remove http/https URLs and bare www.* links."""
@@ -49,7 +44,6 @@ def clean_text(
     remove_special: bool = True,
     keep_punctuation: bool = True,
 ) -> str:
-    """Full cleaning pipeline for a single string."""
     if not isinstance(text, str):
         return ""
     if remove_urls_flag:
@@ -62,7 +56,6 @@ def clean_text(
     return text
 
 
-# ── DataFrame-level helpers ──────────────────────────────────────────────────
 
 def word_count(text: str) -> int:
     return len(str(text).split())
@@ -79,30 +72,26 @@ def apply_cleaning(
     
     For Q&A datasets, handles duplicates intelligently:
     - Removes duplicate pairs (same context + same response)
-    - Preserves different responses for same context (valuable for RAG!)
-    
-    Stats keys: original_rows, after_clean, removed_nulls,
-                removed_short, removed_duplicate_pairs, 
-                duplicate_contexts_retained, final_rows
+    - Preserves different responses for same context (valuable for RAG)
     """
     stats: dict = {
         "original_rows": len(df),
         "duplicate_contexts_retained": 0,
     }
 
-    # 1. Drop nulls
+    #  Drop nulls
     df = df.dropna(subset=[text_col]).copy()
     stats["removed_nulls"] = stats["original_rows"] - len(df)
 
-    # 2. Clean text
+    #  Clean text
     df[text_col] = df[text_col].apply(lambda t: clean_text(t, **clean_kwargs))
 
-    # 3. Remove very short texts
+    #  Remove very short texts
     mask_short = df[text_col].apply(word_count) < min_words
     stats["removed_short"] = mask_short.sum()
     df = df[~mask_short].copy()
 
-    # 4. Remove duplicate PAIRS (not just text_col)
+    #  Remove duplicate PAIRS (not just text_col)
     # For Q&A: keep different responses for same question
     before_dedup = len(df)
     if pair_col is not None:
@@ -128,23 +117,13 @@ def apply_cleaning(
     return df, stats
 
 def print_cleaning_stats(title: str, stats: dict) -> None:
-    """
-    Pretty-print cleaning statistics.
-    Handles both old and new key names for backward compatibility.
-    Supports both simple text dedup and Q&A pair dedup.
-    """
-    print("\n" + "=" * 50)
-    print(f"  {title} — Cleaning Summary")
-    print("=" * 50)
-    
     print(f"  Original rows    : {stats.get('original_rows', 0):,}")
     print(f"  Removed (null)   : {stats.get('removed_nulls', 0):,}")
     print(f"  Removed (short)  : {stats.get('removed_short', 0):,}")
     
-    # Handle dedup stats (works with both old and new versions)
     removed_dedup = stats.get(
-        'removed_duplicate_pairs',  # New Q&A-aware key
-        stats.get('removed_duplicates', 0)  # Fallback to old key
+        'removed_duplicate_pairs',  
+        stats.get('removed_duplicates', 0)
     )
     print(f"  Removed (dedup)  : {removed_dedup:,}")
     

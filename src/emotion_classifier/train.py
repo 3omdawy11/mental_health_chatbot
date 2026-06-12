@@ -1,5 +1,3 @@
-# src/emotion_classifier/train.py
-
 import os
 import torch
 import torch.nn as nn
@@ -13,16 +11,10 @@ from sklearn.utils.class_weight import compute_class_weight
 from config import BASELINE_RUN_CONFIG, WANDB_PROJECT, MODEL_SAVE_PATH
 
 
-# ── 1. Helper: Compute Class Weights Once ─────────────────────────────────────
 
 def calculate_loss_weights(train_loader, device):
-    """
-    Computes balanced class weights efficiently from the train loader 
-    to handle severe class imbalances without looping endlessly.
-    """
-    print("⚖️  Calculating class balance vectors from dataset...")
+    print("  Calculating class balance vectors from dataset...")
     all_labels = []
-    # Loop once to gather labels from the underlying dataset structural array
     for batch in train_loader:
         all_labels.extend(batch['label'].numpy())
         
@@ -37,7 +29,6 @@ def calculate_loss_weights(train_loader, device):
     return torch.tensor(weights, dtype=torch.float).to(device)
 
 
-# ── 2. One Training Epoch ─────────────────────────────────────────────────────
 
 def train_one_epoch(model, loader, optimizer, criterion, device):
     model.train()
@@ -77,7 +68,6 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
     return epoch_loss, macro_f1, micro_f1
 
 
-# ── 3. Validation Epoch ───────────────────────────────────────────────────────
 
 def evaluate_one_epoch(model, loader, criterion, device):
     model.eval()
@@ -110,11 +100,9 @@ def evaluate_one_epoch(model, loader, criterion, device):
     return epoch_loss, macro_f1, micro_f1
 
 
-# ── 4. Full Training Loop ─────────────────────────────────────────────────────
 
 def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFIG):
 
-    # --- Init wandb run ---
     wandb.init(
         project = WANDB_PROJECT,
         name    = run_config["name"],
@@ -132,15 +120,13 @@ def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFI
 
     wandb.watch(model, log='all', log_freq=10)
 
-    # ── INJECT CLASS WEIGHTS INTO LOSS CRITERION ─────────────────────────────
     ##class_weights = calculate_loss_weights(train_loader, device)
     criterion = nn.CrossEntropyLoss()
-    # ─────────────────────────────────────────────────────────────────────────
     
     optimizer = AdamW(model.parameters(), lr=run_config["learning_rate"], weight_decay=0.0)
     scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=2, factor=0.5)
 
-    best_val_f1    = 0.0  # Monitoring Validation Macro F1 instead of Accuracy
+    best_val_f1    = 0.0  
     patience       = 4   # Slightly increased to give overfitting presets room to breathe
     patience_count = 0
 
@@ -155,7 +141,6 @@ def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFI
 
         scheduler.step(val_loss)
 
-        # --- Log metrics to wandb ---
         wandb.log({
             "epoch":       epoch,
             "train_loss":  train_loss,
@@ -169,7 +154,6 @@ def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFI
 
         print(f"{epoch:<6} {train_loss:<11.4f} {train_macro:<12.4f} {train_micro:<12.4f} {val_loss:<10.4f} {val_macro:<11.4f} {val_micro:<11.4f}")
 
-        # --- Save best model checkpoint based on Macro F1 ---
         if val_macro > best_val_f1:
             best_val_f1 = val_macro
 
@@ -191,7 +175,7 @@ def train(model, train_loader, val_loader, device, run_config=BASELINE_RUN_CONFI
         else:
             patience_count += 1
             if patience_count >= patience:
-                print(f"\n⚠️  Early stopping triggered at epoch {epoch}")
+                print(f"\nWarning:  Early stopping triggered at epoch {epoch}")
                 break
 
     print(f"\nTraining complete. Best Validation Macro F1: {best_val_f1:.4f}")

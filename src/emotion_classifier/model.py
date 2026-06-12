@@ -1,5 +1,3 @@
-# src/emotion_classifier/model.py
-
 import torch
 import torch.nn as nn
 
@@ -32,7 +30,6 @@ class EmotionClassifierModel(nn.Module):
             # dropout between layers only makes sense if num_layers > 1
         )
 
-        # 3. Fully connected head
         # lstm_units * 2 because bidirectional
         self.fc = nn.Sequential(
             nn.Linear(lstm_units * 2, fc_hidden_dim),
@@ -42,11 +39,9 @@ class EmotionClassifierModel(nn.Module):
         )
 
     def forward(self, input_ids, attention_mask):
-        # 1. Embed
         x = self.embedding(input_ids)       # (batch, max_len, embed_dim)
         x = self.embed_dropout(x)
 
-        # 2. Pack → BiLSTM → Unpack
         lengths = attention_mask.sum(dim=1).cpu()
         x = nn.utils.rnn.pack_padded_sequence(
             x, lengths, batch_first=True, enforce_sorted=False
@@ -55,9 +50,7 @@ class EmotionClassifierModel(nn.Module):
         x, _ = nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
         # (batch, max_len, lstm_units * 2)
 
-        # 3. GlobalMaxPool
         x = x.max(dim=1).values             # (batch, lstm_units * 2)
 
-        # 4. Classify
         out = self.fc(x)                    # (batch, num_classes)
         return out

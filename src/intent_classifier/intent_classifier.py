@@ -2,8 +2,6 @@ import os
 from groq import Groq
 from dotenv import load_dotenv
 
-# ── 1. Intent Definitions & Few-Shot Examples ─────────────────────────────────
-
 SYSTEM_PROMPT = """
 You are an intent classifier for a mental health support chatbot.
 Your job is to classify the user's message into exactly one of these intents:
@@ -59,21 +57,14 @@ VALID_INTENTS = {
 }
 
 class IntentClassifier:
-    """
-    Inference wrapper for Groq-powered LLM Intent Classification.
-    Initialized once during app startup to avoid reloading environment configs repetitively.
-    """
     
     def __init__(self, api_key: str | None = None) -> None:
-        # Load environment variables if not already initialized
         load_dotenv()
         
-        # Pull key from argument or fall back to system environments
         self.api_key = api_key or os.getenv("GROQ_API_KEY")
         if not self.api_key:
             raise ValueError("Groq API Key not found. Please set GROQ_API_KEY in your environment or .env file.")
         
-        # Instantiate the client once on creation
         self.client = Groq(api_key=self.api_key)
         
         self.valid_intents = {
@@ -85,15 +76,6 @@ class IntentClassifier:
         }
 
     def predict(self, user_message: str) -> dict:
-        """
-        Takes a raw user message and returns a structured dictionary containing the intent.
-        
-        Usage:
-        ------
-        classifier = IntentClassifier()
-        result = classifier.predict("I feel so stressed out")
-        # {'intent': 'asking_mental_health_question', 'is_crisis': False}
-        """
         if not isinstance(user_message, str) or not user_message.strip():
             return {"intent": "out_of_scope", "is_crisis": False}
 
@@ -114,12 +96,10 @@ class IntentClassifier:
             print(f"[INTENT ERROR] Groq API call failed: {e}")
             return {"intent": "out_of_scope", "is_crisis": False}
 
-        # Validate against known outputs
         if intent not in self.valid_intents:
             print(f"[INTENT WARNING] Unexpected response: '{intent}' — falling back to out_of_scope")
             intent = "out_of_scope"
 
-        # Basic text scan heuristic fallback for immediate safety checks
         is_crisis = any(word in user_message.lower() for word in ["suicide", "kill myself", "end my life", "self harm"])
         print(f"Predicted intent: '{intent}' | Crisis flag: {is_crisis}")
         print(f"Original message: '{user_message}'")

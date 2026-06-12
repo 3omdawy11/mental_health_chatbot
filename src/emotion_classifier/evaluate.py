@@ -1,5 +1,3 @@
-# src/emotion_classifier/evaluate.py
-
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,13 +10,11 @@ LABEL_MAP = {0: 'sadness', 1: 'joy', 2: 'love', 3: 'anger', 4: 'fear', 5: 'surpr
 
 def evaluate(model, test_loader, device, run_config=BASELINE_RUN_CONFIG):
 
-    # ── 1. Load best saved checkpoint ────────────────────────────────────────
     checkpoint = torch.load(MODEL_SAVE_PATH, map_location=device)
     model.load_state_dict(checkpoint['model_state'])
     print(f"[EVAL] Loaded best checkpoint from epoch {checkpoint['epoch']}")
     print(f"[EVAL] Checkpoint val_acc: {checkpoint['val_acc']:.4f}")
 
-    # ── 2. Run inference on test set ──────────────────────────────────────────
     model.eval()
     all_preds  = []
     all_labels = []
@@ -38,7 +34,6 @@ def evaluate(model, test_loader, device, run_config=BASELINE_RUN_CONFIG):
     all_preds  = np.array(all_preds)
     all_labels = np.array(all_labels)
 
-    # ── 3. Metrics ────────────────────────────────────────────────────────────
     test_acc = (all_preds == all_labels).mean()
     print(f"\n[EVAL] Test Accuracy: {test_acc:.4f}")
 
@@ -49,7 +44,6 @@ def evaluate(model, test_loader, device, run_config=BASELINE_RUN_CONFIG):
         target_names=list(LABEL_MAP.values())
     ))
 
-    # ── 4. Confusion Matrix ───────────────────────────────────────────────────
     cm = confusion_matrix(all_labels, all_preds)
 
     plt.figure(figsize=(8, 6))

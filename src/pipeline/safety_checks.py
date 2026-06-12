@@ -1,21 +1,11 @@
 """
-src/pipeline/safety_checks.py
-===============================
 Multi-signal crisis detection and safety resource generation.
 
 Signals used:
   1. Keyword matching  — explicit crisis language
   2. Emotion intensity — fear/sadness confidence > threshold
-  3. Message pattern   — rapid-fire short messages (distress indicator)
+  3. Message pattern   — rapid-fire short messages
   4. Intent signals    — implicit self-harm phrasing
-
-Usage
------
-    from src.pipeline.safety_checks import SafetyChecker
-    sc = SafetyChecker()
-    result = sc.check("I want to kill myself")
-    # {"is_crisis": True, "severity": "high",
-    #   "signals": [...], "resources": [...], "recommended_action": "..."}
 """
 
 from __future__ import annotations
@@ -25,8 +15,6 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional
 
-
-# ── Crisis keyword tiers ──────────────────────────────────────────────────────
 
 _HIGH_KEYWORDS = re.compile(
     r"\b(kill\s*(my)?self|suicide|suicidal|want\s+to\s+die|end\s+my\s+life|"
@@ -52,18 +40,19 @@ _LOW_KEYWORDS = re.compile(
     re.IGNORECASE,
 )
 
-# Emotion thresholds for crisis escalation
-_CRISIS_EMOTION_THRESHOLD   = 0.80   # confidence above this is a signal
+_CRISIS_EMOTION_THRESHOLD   = 0.80  
 _CRISIS_EMOTIONS             = {"fear", "sadness"}
 
 # Rapid-fire detection: N messages in T seconds
 _RAPID_FIRE_COUNT   = 4
-_RAPID_FIRE_WINDOW  = 60   # seconds
+_RAPID_FIRE_WINDOW  = 60
 
 
-# ── Crisis resources ──────────────────────────────────────────────────────────
 
 _RESOURCES_BY_LANGUAGE: dict[str, list[dict]] = {
+    "ar": [
+        {"name": "IASP Crisis Centres (Arabic)",         "contact": "https://www.iasp.info/resources/Crisis_Centres/", "url": "https://www.iasp.info", "available": "varies"},
+    ],
     "en": [
         {"name": "988 Suicide & Crisis Lifeline",        "contact": "Call or text 988",      "url": "https://988lifeline.org",       "available": "24/7"},
         {"name": "Crisis Text Line",                     "contact": "Text HOME to 741741",   "url": "https://crisistextline.org",    "available": "24/7"},
@@ -79,15 +68,12 @@ _RESOURCES_BY_LANGUAGE: dict[str, list[dict]] = {
     "de": [
         {"name": "Telefonseelsorge",                     "contact": "0800 111 0 111",         "url": "https://www.telefonseelsorge.de","available": "24/7"},
     ],
-    "ar": [
-        {"name": "IASP Crisis Centres (Arabic)",         "contact": "https://www.iasp.info/resources/Crisis_Centres/", "url": "https://www.iasp.info", "available": "varies"},
-    ],
+    
 }
 
 _DEFAULT_RESOURCES = _RESOURCES_BY_LANGUAGE["en"]
 
 
-# ── De-escalation phrases (injected into response) ───────────────────────────
 
 _DEESCALATION = {
     "high": (
@@ -107,8 +93,7 @@ _DEESCALATION = {
 }
 
 
-# ── Message timing tracker (for rapid-fire detection) ────────────────────────
-
+#  (for rapid-fire detection) ────────────────────────
 class _MessageTimer:
     def __init__(self) -> None:
         self._timestamps: list[float] = []
@@ -122,17 +107,7 @@ class _MessageTimer:
         return len(self._timestamps)
 
 
-# ── Main class ────────────────────────────────────────────────────────────────
-
 class SafetyChecker:
-    """
-    Multi-signal crisis detector.
-
-    Parameters
-    ----------
-    emotion_threshold : confidence above which fear/sadness triggers a signal
-    """
-
     def __init__(self, emotion_threshold: float = _CRISIS_EMOTION_THRESHOLD) -> None:
         self._emo_threshold = emotion_threshold
         self._timer = _MessageTimer()
@@ -144,37 +119,15 @@ class SafetyChecker:
         emotion_confidence: Optional[float] = None,
         language:           str            = "en",
     ) -> dict:
-        """
-        Run all safety signals against the user message.
-
-        Parameters
-        ----------
-        text               : raw user message
-        emotion            : top emotion label from EmotionClassifier
-        emotion_confidence : confidence score for that emotion
-        language           : ISO 639-1 language code (for localised resources)
-
-        Returns
-        -------
-        {
-            "is_crisis":          bool,
-            "severity":           "high" | "medium" | "low" | "none",
-            "signals":            [list of triggered signal descriptions],
-            "resources":          [list of crisis resource dicts],
-            "deescalation_text":  str,
-            "recommended_action": str,
-        }
-        """
         signals:  list[str] = []
         severity: str       = "none"
 
-        # Softeners suppress low-keyword matches
         _SOFTENERS = re.compile(
             r"\b(a\s+little|sometimes|occasionally|bit|slightly|"
             r"how\s+(do|can|should)|manage|help\s+with)\b", re.IGNORECASE
         )
 
-        # 1. Keyword signals
+        # Keyword signals
         if _HIGH_KEYWORDS.search(text):
             signals.append("high-severity crisis keyword detected")
             severity = "high"
@@ -187,7 +140,7 @@ class SafetyChecker:
             if severity == "none":
                 severity = "low"
 
-        # 2. Emotion intensity signal
+        # Emotion intensity signal
         if (emotion in _CRISIS_EMOTIONS
                 and emotion_confidence is not None
                 and emotion_confidence >= self._emo_threshold):
@@ -199,14 +152,14 @@ class SafetyChecker:
             elif severity == "low":
                 severity = "medium"
 
-        # 3. Rapid-fire message pattern
+        # Rapid-fire message pattern
         recent_count = self._timer.record()
         if recent_count >= _RAPID_FIRE_COUNT:
             signals.append(f"rapid-fire messaging ({recent_count} msgs in {_RAPID_FIRE_WINDOW}s)")
             if severity == "none":
                 severity = "low"
 
-        # 4. Implicit self-harm intent phrases (no explicit keywords)
+        # Implicit self-harm intent phrases (no explicit keywords)
         implicit = re.search(
             r"\b(how\s+(many|much).*(pills|tablets|medication)|"
             r"what\s+does\s+it\s+feel\s+like\s+to\s+die|"
@@ -219,10 +172,8 @@ class SafetyChecker:
 
         is_crisis = severity in ("low", "medium", "high")
 
-        # Build resources (localised if available)
         resources = _RESOURCES_BY_LANGUAGE.get(language, _DEFAULT_RESOURCES)
 
-        # Recommended action
         action_map = {
             "high":   "Provide crisis resources immediately. Do not continue standard RAG. Express empathy.",
             "medium": "Provide crisis resources. Continue with extra care and empathy. Recommend professional support.",
@@ -240,7 +191,6 @@ class SafetyChecker:
         }
 
     def format_resources(self, resources: list[dict]) -> str:
-        """Format crisis resources as a human-readable string for injection into responses."""
         if not resources:
             return ""
         lines = ["\n\n**If you're in crisis, please reach out:**"]

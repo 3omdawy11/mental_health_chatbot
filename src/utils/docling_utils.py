@@ -1,7 +1,6 @@
 """
 PDF extraction and semantic chunking using Docling.
-Falls back to basic extraction if Docling is not installed.
-Generates RAG-optimized chunks with enhanced metadata structure.
+Falls back to basic extraction if Docling has an issue.
 """
 import json
 import re
@@ -16,7 +15,6 @@ from sklearn.metrics.pairwise import cosine_similarity
 logger = logging.getLogger(__name__)
 
 
-# ── Chunking helpers (used regardless of extraction method) ─────────────────
 
 def _estimate_tokens(text: str) -> int:
     """Rough token estimate: ~4 chars per token."""
@@ -24,17 +22,12 @@ def _estimate_tokens(text: str) -> int:
 
 
 def _generate_context_query(section: str, text: str, max_length: int = 150) -> str:
-    """
-    Generate a context query from section header and text excerpt.
-    Useful for semantic matching in RAG retrieval.
-    """
     # Use section as base
     if section and section != "Introduction":
         query = f"About {section}: "
     else:
         query = ""
     
-    # Add first few sentences from text
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
     excerpt = " ".join(sentences[:2])
     if len(excerpt) > max_length:
@@ -43,34 +36,9 @@ def _generate_context_query(section: str, text: str, max_length: int = 150) -> s
     query += excerpt
     return query.strip()
 
-
-def _split_by_paragraphs(text: str, max_chars: int = 2000) -> list[str]:
-    """Split a long section into paragraph-sized chunks."""
-    paragraphs = re.split(r"\n{2,}", text.strip())
-    chunks, current = [], ""
-    for para in paragraphs:
-        para = para.strip()
-        if not para:
-            continue
-        if len(current) + len(para) + 2 <= max_chars:
-            current = (current + "\n\n" + para).strip()
-        else:
-            if current:
-                chunks.append(current)
-            # If single paragraph is already too big, hard-split it
-            if len(para) > max_chars:
-                for i in range(0, len(para), max_chars):
-                    chunks.append(para[i : i + max_chars])
-            else:
-                current = para
-    if current:
-        chunks.append(current)
-    return chunks
-
 def _calculate_quality_score(text: str, tokens: int) -> float:
     """
-    Calculate a quality/relevance score for a chunk (0.0 to 1.0).
-    Considers length appropriateness, sentence structure, and information density.
+    calculate score based on length appropriateness, sentence structure, and information density.
     """
     if tokens == 0:
         return 0.0
@@ -95,7 +63,6 @@ def _calculate_quality_score(text: str, tokens: int) -> float:
         else:
             structure_score = 0.8
     
-    # Overall score
     quality_score = (length_score * 0.6 + structure_score * 0.4)
     return round(quality_score, 3)
 
@@ -103,10 +70,6 @@ def _calculate_quality_score(text: str, tokens: int) -> float:
 
 
 def _split_sentences(text: str) -> list[str]:
-    """
-    Split text into sentences using a simple but robust regex.
-    Handles abbreviations, decimals, and common edge-cases.
-    """
     # Protect common abbreviations
     abbrev = re.compile(
         r"\b(Mr|Mrs|Ms|Dr|Prof|Sr|Jr|vs|etc|e\.g|i\.e|Fig|Eq|Vol|No)\.",
@@ -150,7 +113,7 @@ def _compute_breakpoints(
     percentile_threshold: float = 80.0,
 ) -> list[int]:
     """
-    Core semantic chunking logic (Kamradt / "percentile" method).
+    this is the semantic chunking logic i've chose to implement (Kamradt / "percentile" method).
 
     1. Embed every sentence.
     2. Compute cosine similarity between each consecutive sentence pair.
@@ -224,10 +187,7 @@ def _semantic_split(
     percentile_threshold: float = 80.0,
 ) -> list[str]:
     """
-    True semantic splitting for a single block of text.
-
-    Steps
-    -----
+    Steps of true semantic splitting (Kamradt percentile method):
     1. Sentence-tokenise.
     2. Find semantic breakpoints via cosine-distance percentile.
     3. Group sentences into candidate chunks.
@@ -272,11 +232,6 @@ def _semantic_split(
 
     return _merge_short_chunks(capped, min_chunk_chars, max_section_chars)
 
-
-# ════════════════════════════════════════════════════════════════════════
-# Public api
-# ══════════════════════════════════
-
 def semantic_chunk(
     text: str,
     source_file: str,
@@ -285,8 +240,7 @@ def semantic_chunk(
     embedding_model: Optional[Callable] = None,
 ) -> list[dict]:
     """
-    Split text into semantic chunks optimised for RAG using true semantic
-    similarity rather than recursive character splitting.
+    Split text into semantic chunks optimised for RAG using true semantic similarity
 
     Algorithm
     ---------
@@ -311,10 +265,8 @@ def semantic_chunk(
         min_chunk_chars: Minimum characters to retain a chunk.
         embedding_model: Optional callable ``(str) -> vector`` for embeddings.
 
-    Returns:
-        list of dicts with RAG-optimised structure including metadata.
     """
-    # ── 1. Split on markdown headers ─────────────────────────────────────────
+    #Split on markdown headers ─────────────────────────────────────────
     header_pattern = re.compile(r"(^#{1,4}\s.+$)", re.MULTILINE)
     parts = header_pattern.split(text)
 
@@ -336,7 +288,7 @@ def semantic_chunk(
             i += 1
             continue
 
-        # ── 2–4. True semantic splitting ──────────────────────────────────────
+        # semantic splitting ──────────────────────────────────────
         sub_chunks = _semantic_split(
             part,
             max_section_chars=max_section_chars,
@@ -349,7 +301,6 @@ def semantic_chunk(
             quality_score = _calculate_quality_score(sub, tokens)
             context_query = _generate_context_query(current_section, sub)
 
-            # Generate embedding if model provided, otherwise None
             embedding_vector = None
             if embedding_model is not None:
                 try:
@@ -381,7 +332,6 @@ def semantic_chunk(
     return chunks
 
 
-# ── smoke-test ────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     SAMPLE = """
 ## Introduction
@@ -424,7 +374,6 @@ Efficient architectures try to reduce the energy footprint of AI training.
               f"quality={r['metadata']['quality_rating']:.3f}")
         print(f"  text preview: {r['text'][:90].replace(chr(10),' ')}...")
         print()
-# ── Docling extraction ───────────────────────────────────────────────────────
 
 def _extract_with_docling(pdf_path: Path) -> str:
     """Use Docling to convert PDF → markdown text."""
@@ -436,9 +385,9 @@ def _extract_with_docling(pdf_path: Path) -> str:
 
 
 def _extract_with_pypdf(pdf_path: Path) -> str:
-    """Fallback: plain text extraction with pypdf."""
+    #just a fallback
     try:
-        import pypdf  # type: ignore
+        import pypdf
 
         reader = pypdf.PdfReader(str(pdf_path))
         pages = []
@@ -453,7 +402,6 @@ def _extract_with_pypdf(pdf_path: Path) -> str:
 
 
 def extract_pdf(pdf_path: Path, use_docling: bool = True) -> str:
-    """Extract text from a PDF, preferring Docling."""
     try:
         if use_docling:
             return _extract_with_docling(pdf_path)
@@ -462,7 +410,6 @@ def extract_pdf(pdf_path: Path, use_docling: bool = True) -> str:
     return _extract_with_pypdf(pdf_path)
 
 
-# ── Public API ───────────────────────────────────────────────────────────────
 
 def process_pdf_directory(
     pdf_dir: str | Path,
@@ -477,15 +424,6 @@ def process_pdf_directory(
       2. Semantic chunk with RAG optimization
       3. Save to JSON with enhanced metadata
     
-    Args:
-        pdf_dir: Directory containing PDF files
-        output_path: Output JSON file path
-        use_docling: Whether to use Docling for extraction
-        max_section_chars: Maximum section length for chunking
-        embedding_model: Optional callable for embedding generation
-    
-    Returns:
-        Combined list of chunk dicts with metadata
     """
     pdf_dir = Path(pdf_dir)
     output_path = Path(output_path)
@@ -512,7 +450,6 @@ def process_pdf_directory(
         except Exception as exc:
             logger.error(f"Failed to process {pdf_path.name}: {exc}")
 
-    # Re-index IDs globally and maintain consistency
     for i, chunk in enumerate(all_chunks):
         chunk["chunk_id"] = f"pdf_chunk_{i:05d}"
 
@@ -524,7 +461,6 @@ def process_pdf_directory(
 
 
 def load_chunks(path: str | Path) -> list[dict]:
-    """Load chunks from a JSON file."""
     path = Path(path)
     if not path.exists():
         return []
@@ -551,10 +487,6 @@ class NumpyEncoder(json.JSONEncoder):
 
 
 def save_chunks(chunks: list[dict], path: str | Path) -> None:
-    """
-    Save chunks to a JSON file with proper serialization.
-    Uses custom encoder to handle numpy/pandas types.
-    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     
@@ -564,7 +496,6 @@ def save_chunks(chunks: list[dict], path: str | Path) -> None:
     logger.info(f"Saved {len(chunks)} chunks to {path}")
 
 def filter_chunks_by_quality(chunks: list[dict], min_rating: float = 0.5) -> list[dict]:
-    """Filter chunks by quality rating threshold."""
     return [
         c for c in chunks
         if c.get("metadata", {}).get("quality_rating", 0) >= min_rating

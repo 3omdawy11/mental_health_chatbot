@@ -1,16 +1,6 @@
 """
-src/utils/embedder.py
-======================
 Embedding pipeline using SentenceTransformer (all-MiniLM-L6-v2, 384-dim).
 Includes HyDE (Hypothetical Document Embeddings) for improved retrieval.
-
-Usage
------
-    from src.utils.embedder import Embedder
-    emb = Embedder()
-    vec = emb.embed_text("I feel anxious about work")         # (384,) ndarray
-    vecs = emb.embed_batch(["text1", "text2"])                # (N, 384) ndarray
-    hyde_vec = emb.embed_hyde("I feel anxious", groq_key=...) # HyDE embedding
 """
 
 from __future__ import annotations
@@ -35,16 +25,6 @@ Response:"""
 
 
 class Embedder:
-    """
-    Sentence embedding pipeline with optional HyDE.
-
-    Parameters
-    ----------
-    model_name : SentenceTransformer model (default: all-MiniLM-L6-v2)
-    device     : 'cpu', 'cuda', or None (auto-detect)
-    groq_api_key : For HyDE generation. Falls back to GROQ_API_KEY env var.
-    """
-
     def __init__(
         self,
         model_name: str = MODEL_NAME,
@@ -56,7 +36,6 @@ class Embedder:
         self._groq_api_key = groq_api_key or os.getenv("GROQ_API_KEY", "")
         self._model       = None   # lazy load
 
-    # ── Lazy model load ───────────────────────────────────────────────────────
 
     def _load(self) -> None:
         if self._model is not None:
@@ -64,7 +43,6 @@ class Embedder:
         from pathlib import Path
         _ROOT = Path(__file__).resolve().parent.parent.parent
         local_path = _ROOT / "models" / "sentence_transformer_local"
-        # Try local offline model first (no HuggingFace download needed)
         if local_path.exists():
             logger.info(f"Loading local BERT model from {local_path}")
             from transformers import BertModel, BertTokenizerFast
@@ -83,7 +61,6 @@ class Embedder:
             self._model = SentenceTransformer(self._model_name, device=self._device)
             self._use_local = False
 
-    # ── Core embedding ────────────────────────────────────────────────────────
 
     def _local_encode(self, texts: list[str]) -> np.ndarray:
         """Mean-pool BERT hidden states → normalised (N, 384) embeddings."""
@@ -119,10 +96,6 @@ class Embedder:
         batch_size: int = 64,
         show_progress: bool = False,
     ) -> np.ndarray:
-        """
-        Embed a list of strings → (N, 384) float32 ndarray.
-        Empty/invalid strings get zero vectors.
-        """
         self._load()
         if not texts:
             return np.empty((0, EMBED_DIM), dtype=np.float32)
@@ -153,13 +126,9 @@ class Embedder:
                 vi += 1
         return result
 
-    # ── HyDE ─────────────────────────────────────────────────────────────────
+    #  HyDE
 
     def generate_hypothetical(self, query: str) -> Optional[str]:
-        """
-        Use Groq to generate a hypothetical counsellor response to the query.
-        Returns None on failure.
-        """
         if not self._groq_api_key:
             return None
         try:
@@ -187,18 +156,10 @@ class Embedder:
         HyDE embedding: average of query embedding and hypothetical-doc embedding.
 
         Steps
-        -----
         1. Embed the original query                  → q_vec
         2. Generate a hypothetical response via Groq → hyp_text
         3. Embed hyp_text                            → h_vec
         4. Return alpha*q_vec + (1-alpha)*h_vec      (both L2-normalised)
-
-        Falls back to plain embed_text() if generation fails.
-
-        Parameters
-        ----------
-        query : user query string
-        alpha : weight on original query (0=all-hypothetical, 1=no-HyDE)
         """
         q_vec = self.embed_text(query)
         hyp   = self.generate_hypothetical(query)
@@ -213,11 +174,9 @@ class Embedder:
         norm = np.linalg.norm(combined)
         return (combined / norm).astype(np.float32) if norm > 0 else q_vec
 
-    # ── Similarity helpers ────────────────────────────────────────────────────
 
     @staticmethod
     def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
-        """Cosine similarity between two 1-D vectors."""
         na, nb = np.linalg.norm(a), np.linalg.norm(b)
         if na == 0 or nb == 0:
             return 0.0
@@ -229,11 +188,7 @@ class Embedder:
         corpus_vecs: np.ndarray,
         k: int = 5,
     ) -> list[tuple[int, float]]:
-        """
-        Return (index, score) pairs for the top-k most similar corpus vectors.
-        corpus_vecs: (N, 384) array already L2-normalised.
-        """
-        scores = corpus_vecs @ query_vec          # dot product = cosine if normalised
+        scores = corpus_vecs @ query_vec
         top_idx = np.argsort(scores)[::-1][:k]
         return [(int(i), float(scores[i])) for i in top_idx]
 

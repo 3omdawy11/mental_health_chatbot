@@ -1,16 +1,13 @@
 """
-src/modules/ner_extractor.py
-==============================
+I thought of having an NER in this project to extract structured info from user queries, 
+which could be useful for personalization, analytics, or downstream tasks. I wanted to keep 
+it simple and focused on mental health entities.
 Zero-shot Named Entity Recognition for mental health queries.
 
 Extracts: symptoms, triggers, duration, severity
 Uses Groq LLM with structured JSON output; falls back to regex when
 no API key is set or the call fails.
-
-Usage
------
-    from src.modules.ner_extractor import NERExtractor
-    ner = NERExtractor()
+it should look like this:
     result = ner.extract("I've been feeling anxious about work for 3 weeks")
     # {
     #   "symptoms": ["anxiety"],
@@ -27,7 +24,6 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-# ── Mental health vocabulary for regex fallback ───────────────────────────────
 _SYMPTOMS = [
     "anxiety","anxious","depression","depressed","stress","stressed","panic",
     "insomnia","fatigue","exhaustion","hopeless","worthless","lonely","loneliness",
@@ -82,15 +78,6 @@ JSON:"""
 
 
 class NERExtractor:
-    """
-    Zero-shot NER for mental health entities.
-
-    Parameters
-    ----------
-    api_key : Groq API key (defaults to GROQ_API_KEY env var).
-              If absent, uses fast regex fallback — no LLM call.
-    model   : Groq model name.
-    """
 
     def __init__(
         self,
@@ -109,7 +96,6 @@ class NERExtractor:
             self._client = Groq(api_key=self._api_key, timeout=self._timeout)
         return self._client
 
-    # ── LLM extraction ────────────────────────────────────────────────────────
 
     def _extract_via_llm(self, text: str) -> dict:
         prompt = _NER_PROMPT.replace("{text}", text)
@@ -120,12 +106,11 @@ class NERExtractor:
             temperature=0.0,
         )
         raw = resp.choices[0].message.content or "{}"
-        # Strip markdown fences if present
+        # we'll strip markdown fences if present cuz they've ruined my JSON parsing a few times
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw.strip())
         data = json.loads(raw)
         return self._normalise(data)
 
-    # ── Regex fallback ────────────────────────────────────────────────────────
 
     def _extract_via_regex(self, text: str) -> dict:
         lower = text.lower()
@@ -144,7 +129,6 @@ class NERExtractor:
         return {"symptoms": symptoms, "triggers": triggers,
                 "duration": duration, "severity": severity}
 
-    # ── Normalise / validate schema ───────────────────────────────────────────
 
     @staticmethod
     def _normalise(data: dict) -> dict:
@@ -158,16 +142,8 @@ class NERExtractor:
                         else "medium",
         }
 
-    # ── Public API ────────────────────────────────────────────────────────────
 
     def extract(self, text: str) -> dict:
-        """
-        Extract mental health entities from text.
-
-        Returns
-        -------
-        {"symptoms": [...], "triggers": [...], "duration": str|None, "severity": str}
-        """
         if not isinstance(text, str) or not text.strip():
             return {"symptoms": [], "triggers": [], "duration": None, "severity": "low"}
 

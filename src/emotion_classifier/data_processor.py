@@ -1,4 +1,3 @@
-# src/tokenizer.py
 import torch
 import pickle
 from torch.utils.data import Dataset, DataLoader
@@ -18,12 +17,10 @@ def load_data():
     return train_df, val_df, test_df
 
 
-# ── 1. Load the pretrained tokenizer ─────────────────────────────────────────
 
 def load_tokenizer():
     """
-    Loads a pretrained BERT tokenizer — we use it purely for
-    its vocabulary and encoding, not the BERT model itself.
+    we use it purely for its vocabulary and encoding, not the BERT model itself.
     """
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     return tokenizer
@@ -42,11 +39,8 @@ def load_saved_tokenizer(path=TOKENIZER_PATH):
     return tokenizer
 
 
-# ── 2. PyTorch Dataset class ──────────────────────────────────────────────────
-
 class EmotionDataset(Dataset):
     """
-    Wraps a DataFrame split into a PyTorch Dataset.
     Each item returns input_ids, attention_mask, and label as tensors.
     """
     def __init__(self, df, tokenizer, max_len=MAX_LEN):
@@ -71,10 +65,6 @@ class EmotionDataset(Dataset):
             'attention_mask' : encoding['attention_mask'].squeeze(0),  # (max_len,)
             'label'          : torch.tensor(self.labels[idx], dtype=torch.long)
         }
-
-
-# ── 3. DataLoaders ────────────────────────────────────────────────────────────
-
 
 def get_dataloaders(train_df, val_df, test_df, tokenizer, run_config):
     train_dataset = EmotionDataset(train_df, tokenizer, max_len=run_config["max_len"])

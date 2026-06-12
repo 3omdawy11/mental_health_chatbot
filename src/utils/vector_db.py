@@ -1,23 +1,6 @@
 """
-src/utils/vector_db.py
-=======================
-Qdrant vector database manager for the mental health chatbot RAG pipeline.
-
-Supports two modes:
-  1. Cloud (QDRANT_URL + QDRANT_API_KEY in env) — production
-  2. Local in-memory / on-disk            — development / testing
-
 HNSW parameters used:
   m=16, ef_construct=200 → good recall (~98%) with fast search
-
-Usage
------
-    from src.utils.vector_db import VectorDBManager
-    db = VectorDBManager()                    # reads .env automatically
-    db.create_collection()
-    db.index_chunks(chunks, embeddings)
-    results = db.search(query_vec, limit=5)
-    results = db.search_by_text("I feel anxious", embedder)
 """
 
 from __future__ import annotations
@@ -38,7 +21,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-# Load .env on import (no-op if file absent)
 load_dotenv()
 
 _ROOT       = Path(__file__).resolve().parent.parent.parent
@@ -50,25 +32,7 @@ def _load_cfg() -> dict:
         return yaml.safe_load(f)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-
 class VectorDBManager:
-    """
-    Manages a Qdrant collection for the mental health knowledge base.
-
-    Connection priority
-    -------------------
-    1. QDRANT_URL + QDRANT_API_KEY  → Qdrant Cloud
-    2. QDRANT_URL only              → self-hosted Qdrant (no auth)
-    3. Neither set                  → in-memory local instance (dev/test)
-
-    Parameters
-    ----------
-    collection_name : override config value
-    url             : override QDRANT_URL env var
-    api_key         : override QDRANT_API_KEY env var
-    """
-
     def __init__(
         self,
         collection_name: Optional[str] = None,
@@ -104,19 +68,7 @@ class VectorDBManager:
         logger.info(f"VectorDBManager: connected [{mode}]")
         return self._client
 
-    # ── Collection management ─────────────────────────────────────────────────
-
     def create_collection(self, recreate: bool = False) -> bool:
-        """
-        Create the Qdrant collection with HNSW indexing.
-
-        Parameters
-        ----------
-        recreate : if True, delete existing collection and recreate it.
-                   Use carefully in production — deletes all indexed data.
-
-        Returns True if created, False if already existed (and recreate=False).
-        """
         from qdrant_client.models import (
             Distance, VectorParams, HnswConfigDiff,
             OptimizersConfigDiff,
@@ -130,7 +82,6 @@ class VectorDBManager:
                      "Dot": Distance.DOT}
         distance  = dist_map.get(col_cfg["distance"], Distance.COSINE)
 
-        # Check existence
         existing = [c.name for c in client.get_collections().collections]
         if self._col_name in existing:
             if not recreate:
@@ -160,7 +111,6 @@ class VectorDBManager:
         return True
 
     def collection_info(self) -> dict:
-        """Return collection statistics."""
         client = self._get_client()
         try:
             info = client.get_collection(self._col_name)
@@ -177,8 +127,6 @@ class VectorDBManager:
         self._get_client().delete_collection(self._col_name)
         logger.info(f"Deleted collection '{self._col_name}'.")
 
-    # ── Indexing ──────────────────────────────────────────────────────────────
-
     def index_chunks(
         self,
         chunks:     list[dict],
@@ -187,14 +135,6 @@ class VectorDBManager:
     ) -> dict:
         """
         Upload chunks + their embeddings to Qdrant.
-
-        Parameters
-        ----------
-        chunks     : list of chunk dicts (must have 'id' and 'text' keys)
-        embeddings : (N, 384) float32 ndarray — one row per chunk
-        show_progress : print progress during upload
-
-        Returns summary dict with total, batches, elapsed.
         """
         from qdrant_client.models import PointStruct
 
@@ -266,11 +206,9 @@ class VectorDBManager:
         return summary
 
     def verify_count(self) -> int:
-        """Return the number of indexed points in the collection."""
         info = self._get_client().get_collection(self._col_name)
         return info.points_count or 0
 
-    # ── Search ────────────────────────────────────────────────────────────────
 
     def search(
         self,
@@ -281,16 +219,6 @@ class VectorDBManager:
     ) -> list[dict]:
         """
         Semantic search by pre-computed query vector.
-
-        Parameters
-        ----------
-        query_vector    : (384,) float32 embedding of the query
-        limit           : number of results (default from config)
-        score_threshold : minimum cosine similarity (default from config)
-        filter_payload  : optional Qdrant filter dict
-
-        Returns
-        -------
         List of result dicts:
         [{
             "score":   float,
@@ -343,12 +271,6 @@ class VectorDBManager:
     ) -> list[dict]:
         """
         Convenience method: embed text then search.
-
-        Parameters
-        ----------
-        text     : raw query string
-        embedder : Embedder instance (Phase 5)
-        use_hyde : use HyDE embedding (requires GROQ_API_KEY)
         """
         if use_hyde:
             vec = embedder.embed_hyde(text)
@@ -356,8 +278,7 @@ class VectorDBManager:
             vec = embedder.embed_text(text)
         return self.search(vec, limit=limit, score_threshold=score_threshold)
 
-    # ── Utility ───────────────────────────────────────────────────────────────
-
+    # ── Utility ───
     @property
     def collection_name(self) -> str:
         return self._col_name

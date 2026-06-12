@@ -1,17 +1,6 @@
 """
-src/utils/conversation_manager.py
-===================================
-Tracks multi-turn conversation history and accumulates clinical context
+this file I made it to track multi-turn conversation history and accumulates clinical context
 (symptoms, triggers, topics, suggestions) across a session.
-
-Usage
------
-    from src.utils.conversation_manager import ConversationManager
-    cm = ConversationManager(max_turns=10)
-    cm.add_turn("user", "I've been anxious about work", ner={"symptoms":["anxiety"],"triggers":["work"]})
-    cm.add_turn("assistant", "That sounds difficult…")
-    summary = cm.get_session_summary()
-    context_str = cm.get_context_for_prompt()
 """
 
 from __future__ import annotations
@@ -23,23 +12,13 @@ from typing import Optional
 
 @dataclass
 class Turn:
-    role:      str          # "user" | "assistant"
+    role:      str 
     text:      str
     timestamp: float = field(default_factory=time.time)
     metadata:  dict  = field(default_factory=dict)   # emotion, intent, ner, etc.
 
 
 class ConversationManager:
-    """
-    Maintains a sliding window of conversation turns and accumulates
-    structured context from NER, emotion, and intent signals.
-
-    Parameters
-    ----------
-    max_turns : maximum turns to keep (older ones are dropped).
-                Keeps the system prompt lean for LLM calls.
-    """
-
     def __init__(self, max_turns: int = 10) -> None:
         self.max_turns   = max_turns
         self._turns:     list[Turn] = []
@@ -51,8 +30,6 @@ class ConversationManager:
         self._emotions:  list[str] = []
         self._turn_count = 0          # total including dropped turns
 
-    # ── Adding turns ─────────────────────────────────────────────────────────
-
     def add_turn(
         self,
         role:       str,
@@ -63,19 +40,6 @@ class ConversationManager:
         sources:    Optional[list] = None,
         suggestions: Optional[list[str]] = None,
     ) -> None:
-        """
-        Record one conversation turn.
-
-        Parameters
-        ----------
-        role        : "user" or "assistant"
-        text        : raw message text
-        ner         : NER result dict from NERExtractor
-        emotion     : top emotion label (from EmotionClassifier)
-        intent      : intent label (from IntentClassifier)
-        sources     : retrieved RAG chunks (list of dicts)
-        suggestions : therapy/coping suggestions mentioned in response
-        """
         meta = {}
         if emotion:    meta["emotion"]  = emotion
         if intent:     meta["intent"]   = intent
@@ -84,11 +48,9 @@ class ConversationManager:
         self._turns.append(Turn(role=role, text=text, metadata=meta))
         self._turn_count += 1
 
-        # Trim window
         if len(self._turns) > self.max_turns:
             self._turns = self._turns[-self.max_turns:]
 
-        # Accumulate clinical context (user turns only)
         if role == "user":
             if ner:
                 for sym in ner.get("symptoms", []):
@@ -107,23 +69,13 @@ class ConversationManager:
                     if kw not in self._topics:
                         self._topics.append(kw)
 
-        # Accumulate suggestions from assistant turns
         if role == "assistant" and suggestions:
             for s in suggestions:
                 if s not in self._suggestions:
                     self._suggestions.append(s)
 
-    # ── Context retrieval ─────────────────────────────────────────────────────
 
     def get_context_for_prompt(self, max_chars: int = 600) -> str:
-        """
-        Returns a compact context string to prepend to RAG prompts.
-
-        Example output:
-            Previous context: The user has mentioned symptoms: anxiety, stress.
-            Triggers: work, family. Emotions felt: sadness, fear.
-            Topics discussed: sleep, panic attacks.
-        """
         parts = []
         if self._symptoms:
             parts.append(f"Symptoms mentioned: {', '.join(self._symptoms[:6])}")
@@ -141,29 +93,10 @@ class ConversationManager:
         return context[:max_chars]
 
     def get_recent_history(self, n_turns: int = 4) -> list[dict]:
-        """
-        Return the last n_turns as a list of {"role": ..., "content": ...}
-        dicts suitable for inserting into an LLM messages array.
-        """
         recent = self._turns[-n_turns:] if len(self._turns) >= n_turns else self._turns
         return [{"role": t.role, "content": t.text} for t in recent]
 
     def get_session_summary(self) -> dict:
-        """
-        Generate a structured end-of-session summary.
-
-        Returns
-        -------
-        {
-            "total_turns": int,
-            "symptoms_discussed": [...],
-            "triggers_discussed": [...],
-            "emotions_observed":  [...],
-            "topics_covered":     [...],
-            "suggestions_made":   [...],
-            "narrative": str        # human-readable paragraph
-        }
-        """
         narrative_parts = []
         if self._symptoms:
             narrative_parts.append(f"We discussed: {', '.join(self._symptoms)}")
@@ -184,7 +117,6 @@ class ConversationManager:
         }
 
     def get_accumulated_context(self) -> dict:
-        """Return raw accumulated context dict (used by orchestrator metadata)."""
         return {
             "symptoms":    list(self._symptoms),
             "triggers":    list(self._triggers),
@@ -193,12 +125,10 @@ class ConversationManager:
         }
 
     def mentioned_earlier(self, keyword: str) -> bool:
-        """Check if a keyword appears anywhere in conversation history."""
         kw = keyword.lower()
         return any(kw in t.text.lower() for t in self._turns)
 
     def reset(self) -> None:
-        """Clear the session (start fresh)."""
         self.__init__(max_turns=self.max_turns)
 
     @property
@@ -217,7 +147,6 @@ class ConversationManager:
                 f"symptoms={self._symptoms}, triggers={self._triggers})")
 
 
-# ── Internal helpers ──────────────────────────────────────────────────────────
 
 _TOPIC_KEYWORDS = {
     "anxiety", "depression", "stress", "panic", "sleep", "insomnia",
