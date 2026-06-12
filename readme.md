@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/safespace-logo.png" width="160" alt="SafeSpace AI logo" />
+<img src="assets/safespace-logo.png" width="200" alt="SafeSpace AI logo" />
 
 # SafeSpace AI
 
@@ -143,9 +143,7 @@ uvicorn app.main:app --reload
 
 Then open **http://localhost:8000/docs** for the interactive API.
 
-> ```markdown
-> <div align="center"><img src="assets/demo.gif" width="700" alt="SafeSpace AI demo"/></div>
-> ```
+<div align="center"><img src="assets/demo.gif" width="700" alt="SafeSpace AI demo"/></div>
 
 ---
 
