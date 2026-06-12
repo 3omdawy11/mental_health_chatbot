@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🧠 SafeSpace AI
+<img src="assets/safespace-logo.png" width="160" alt="SafeSpace AI logo" />
+
+# SafeSpace AI
 
 **RAG-Based Mental Health Support Chatbot** — NLP Final Project
 
@@ -141,7 +143,6 @@ uvicorn app.main:app --reload
 
 Then open **http://localhost:8000/docs** for the interactive API.
 
-> 💡 **Tip:** record a short demo and drop it in `assets/demo.gif`, then embed it here — a 15-second clip is the single highest-impact addition to any README:
 > ```markdown
 > <div align="center"><img src="assets/demo.gif" width="700" alt="SafeSpace AI demo"/></div>
 > ```
