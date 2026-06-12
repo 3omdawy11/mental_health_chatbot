@@ -372,7 +372,6 @@ Main inference endpoint. Accepts a user message and returns a full pipeline resp
 | Mohamed Emad | Ziad Mahmoud |
 |:---:|:---:|
 | [![GitHub](https://img.shields.io/badge/-GitHub-181717?logo=github)](https://github.com/3omdawy11) | [![GitHub](https://img.shields.io/badge/-GitHub-181717?logo=github)](https://github.com/ZeyadMahmoudAmrMohamed) |
-| Backend + NLP pipeline | Frontend + React UI |
 
 <div align="center">
 <br/>
